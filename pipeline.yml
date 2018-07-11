@@ -1,0 +1,120 @@
+---
+jobs:
+
+- name: push-stratos-staging
+  serial: true
+  plan:
+  - aggregate:
+    - get: stratos-src
+      trigger: true
+    - get: stratos-config
+      trigger: true
+  - put: deploy-stratos-staging
+    params:
+      path: stratos-src/
+      current_app_name: stratos
+      manifest: stratos-config/manifest.yml
+      environment_variables:
+        SSO_LOGIN: true
+        CF_CLIENT: stratos
+        CF_CLIENT_SECRET: {{stratos-client-secret-staging}}
+  on_failure:
+    put: slack
+    params:
+      text: |
+        :x: FAILED to deploy Stratos on staging
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: {{slack-channel}}
+      username: {{slack-username}}
+      icon_url: {{slack-icon-url}}
+  on_success:
+    put: slack
+    params:
+      text: |
+        :white_check_mark: Successfully deployed Stratos on staging
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: {{slack-channel}}
+      username: {{slack-username}}
+      icon_url: {{slack-icon-url}}
+
+- name: push-stratos-production
+  serial: true
+  plan:
+  - aggregate:
+    - get: stratos-src
+      trigger: true
+      passed: [push-stratos-staging]
+    - get: stratos-config
+      trigger: true
+      passed: [push-stratos-staging]
+  - put: deploy-stratos-production
+    params:
+      path: stratos-src/
+      current_app_name: stratos
+      manifest: stratos-config/manifest.yml
+      environment_variables:
+        SSO_LOGIN: true
+        CF_CLIENT: stratos
+        CF_CLIENT_SECRET: {{stratos-client-secret-production}}
+  on_failure:
+    put: slack
+    params:
+      text: |
+        :x: FAILED to deploy Stratos on production
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: {{slack-channel}}
+      username: {{slack-username}}
+      icon_url: {{slack-icon-url}}
+  on_success:
+    put: slack
+    params:
+      text: |
+        :white_check_mark: Successfully deployed Stratos on production
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: {{slack-channel}}
+      username: {{slack-username}}
+      icon_url: {{slack-icon-url}}
+
+resource_types:
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+
+resources:
+- name: stratos-src
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry-incubator/stratos.git
+    branch: v2-master
+
+- name: stratos-config
+  type: git
+  source:
+    uri: https://github.com/18F/cg-deploy-stratos.git
+    branch: master
+
+- name: deploy-stratos-staging
+  type: cf
+  source:
+    api: {{staging-cf-api-url}}
+    username: {{staging-cf-username}}
+    password: {{staging-cf-password}}
+    organization: {{staging-cf-organization}}
+    space: {{staging-cf-space}}
+    skip_cert_check: false
+
+- name: deploy-stratos-production
+  type: cf
+  source:
+    api: {{production-cf-api-url}}
+    username: {{production-cf-username}}
+    password: {{production-cf-password}}
+    organization: {{production-cf-organization}}
+    space: {{production-cf-space}}
+    skip_cert_check: false
+
+- name: slack
+  type: slack-notification
+  source:
+    url: {{slack-webhook-url}}
