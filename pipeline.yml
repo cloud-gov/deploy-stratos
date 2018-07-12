@@ -15,7 +15,7 @@ jobs:
       current_app_name: stratos
       manifest: stratos-config/manifest.yml
       environment_variables:
-        SSO_LOGIN: true
+        SSO_LOGIN: "true"
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: {{stratos-client-secret-staging}}
   on_failure:
@@ -53,7 +53,7 @@ jobs:
       current_app_name: stratos
       manifest: stratos-config/manifest.yml
       environment_variables:
-        SSO_LOGIN: true
+        SSO_LOGIN: "true"
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: {{stratos-client-secret-production}}
   on_failure:
