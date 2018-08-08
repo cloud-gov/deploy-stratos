@@ -57,6 +57,14 @@ jobs:
         SSO_LOGIN: "true"
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((stratos-client-secret-production))
+  - task: map-routes-production
+    platform: linux
+    image_resource:
+      type: docker-image
+      source:
+        repository: 18fgsa/concourse-task
+    run: cf map-route stratos fr.cloud.gov -n dashboard-beta
+
   on_failure:
     put: slack
     params:
