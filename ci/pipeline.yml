@@ -8,9 +8,33 @@ jobs:
       trigger: true
     - get: stratos-config
       trigger: true
+  - task: prebuild-npm
+    config: &prebuild-config
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: node
+      inputs:
+      - name: stratos-src
+      - name: stratos-config
+      outputs:
+      - name: stratos-prebuilt
+      params:
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd stratos-src
+          ln -sf ../stratos-config/custom-src .
+          npm install
+          npm run customize
+          npm run prebuild-ui
+          cp -a . ../stratos-prebuilt
   - put: deploy-stratos-staging
     params:
-      path: stratos-src/
+      path: stratos-prebuilt/
       current_app_name: stratos
       manifest: stratos-config/manifest.yml
       show_app_log: true
@@ -47,9 +71,12 @@ jobs:
     - get: stratos-config
       trigger: true
       passed: [push-stratos-staging]
+  - task: prebuild-npm
+    config:
+      <<: *prebuild-config
   - put: deploy-stratos-production
     params:
-      path: stratos-src/
+      path: stratos-prebuilt/
       current_app_name: stratos
       manifest: stratos-config/manifest.yml
       show_app_log: true
