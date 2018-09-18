@@ -29,6 +29,7 @@ jobs:
           cd stratos-src
           ln -sf ../stratos-config/custom-src .
           npm install
+          npm run store-git-metadata
           npm run customize
           npm run prebuild-ui
           cp -a . ../stratos-prebuilt
@@ -40,6 +41,7 @@ jobs:
       show_app_log: true
       environment_variables:
         SSO_LOGIN: "true"
+        SSO_OPTIONS: "nosplash,logout"
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((stratos-client-secret-staging))
   on_failure:
@@ -82,6 +84,7 @@ jobs:
       show_app_log: true
       environment_variables:
         SSO_LOGIN: "true"
+        SSO_OPTIONS: "nosplash,logout"
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((stratos-client-secret-production))
   # This is only necessary until we can use variable interpolation in
