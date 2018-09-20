@@ -67,8 +67,9 @@ jobs:
   serial: true
   plan:
   - aggregate:
-    - get: stratos-stable-src
+    - get: stratos-src
       trigger: true
+      resource: stratos-stable-src
     - get: stratos-config
       trigger: true
       passed: [push-stratos-staging]
