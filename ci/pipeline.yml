@@ -131,6 +131,7 @@ resources:
   type: git
   source:
     uri: https://github.com/cloudfoundry-incubator/stratos.git
+    tag_filter: stable
     branch: v2-master
 
 - name: stratos-config
