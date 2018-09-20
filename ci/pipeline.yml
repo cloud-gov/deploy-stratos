@@ -67,9 +67,8 @@ jobs:
   serial: true
   plan:
   - aggregate:
-    - get: stratos-src
+    - get: stratos-stable-src
       trigger: true
-      passed: [push-stratos-staging]
     - get: stratos-config
       trigger: true
       passed: [push-stratos-staging]
@@ -131,6 +130,13 @@ resources:
   type: git
   source:
     uri: https://github.com/cloudfoundry-incubator/stratos.git
+    branch: v2-master
+
+- name: stratos-stable-src
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry-incubator/stratos.git
+    tag_filter: stable
     branch: v2-master
 
 - name: stratos-config
