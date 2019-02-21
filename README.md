@@ -5,8 +5,9 @@ This is part of [cloud.gov](https://cloud.gov/), deployment pipeline for [Strato
 ## Customizing the frontend
 
 ### Get dependencies
-* Install [NodeJs](https://nodejs.org)
-* Install [Angular CLI](https://cli.angular.io/) - `npm install -g @angular/cli`
+* Install [NodeJs](https://nodejs.org) - `brew install node`
+* Install [Angular CLI](https://cli.angular.io/) - `brew install angular-cli`
+* Install [Docker](https://www.docker.com/) - `brew cask install docker`
 * Clone this repository
   ```
   git clone https://github.com/18F/cg-deploy-stratos.git
@@ -24,22 +25,30 @@ This is part of [cloud.gov](https://cloud.gov/), deployment pipeline for [Strato
   ln -sf ../cg-deploy-stratos/custom-src .
   ```
 
-### Deploy the backend to your cloud.gov sandbox
-* Pre-build the assets to run on cloud.gov
+### Setup the backend
+
+#### To test with [`cfdev`](https://github.com/cloudfoundry-incubator/cfdev) (a local Cloud Foundry instance with full admin privileges)
+* Install `cfdev` (if you haven't already)
   ```
-  npm install
-  npm run customize
-  npm run prebuild-ui
+  cf install-plugin -r CF-Community "cfdev"
   ```
-* Decide on a URL for the backend that we'll deploy in our sandbox,
-e.g., `stratos-{myinitials}.app.cloud.gov`.
-* Push the app to your cloud.gov sandbox
+* Start up `cfdev` (This will take a loooong time)
   ```
-  cf target -o sandbox-{org} -s {my.email@address.gov}
-  cf push stratos -m 1G -n stratos-{myinitials} -d app.cloud.gov
+  cf dev start
+  ```
+* Run the prebuit Stratos Docker image pointing at the local `cfdev` deployment
+  ```
+  docker run -p 5443:443 -e CONSOLE_ADMIN_SCOPE=cloud_controller.admin -e CONSOLE_CLIENT=cf -e UAA_ENDPOINT=https://uaa.dev.cfdev.sh -e AUTO_REG_CF_URL=https://api.dev.cfdev.sh splatform/stratos
+  ```
+* Note your credentials you will use to login later, which are username `admin` and password `admin`
+
+#### To test with cloud.gov (using a service account with limited permissions)
+* Run the prebuit Stratos Docker image pointing at cloud.gov
+  ```
+  docker run -p 5443:443 -e CONSOLE_ADMIN_SCOPE=cloud_controller.admin -e CONSOLE_CLIENT=cf -e UAA_ENDPOINT=https://uaa.fr.cloud.gov -e AUTO_REG_CF_URL=https://api.fr.cloud.gov splatform/stratos
   ```
 
-### Create a service instance user so you can login
+##### Create a service instance user in cloud.gov so you can login
 
 * Create a service instance of the `cloud-gov-service-account` service, called `stratos-account`, using the `space-auditor` plan/role
   ```
@@ -49,26 +58,27 @@ e.g., `stratos-{myinitials}.app.cloud.gov`.
   ```
   cf create-service-key stratos-account stratos-account-creds
   ```
-* Get a copy of the credentials so you can login later
+* Note the credentials you will use to login later
   ```
   cf service-key stratos-account stratos-account-creds
   ```
 
-### Modify frontend configuration
-* Copy the template for proxy configuration
+### Run your frontend
+* Ensure all the dependencies are installed
   ```
-  cp proxy.conf.template.js proxy.conf.js
+  npm install
   ```
-* Now edit `proxy.conf.js` and change the `host` to the chosen hostname you used to deploy the backend. e.g. `stratos-{myinitials}.app.cloud.gov`.
-
-### Run the frontend
-* Run `npm start` for a dev server. (the app will automatically reload if you change any of the source files)
+* Ensure your customizations are included
+  ```
+  npm run customize
+  ```
+* Run `ng start --aot=false` for a dev server. (The app will automatically reload if you change any of the source files)
 * Navigate to `https://localhost:4200/`
-* Login with the credentials you setup earlier
+* Login with username `admin` and password `admin` (for `cfdev`), or else the credentials you retrieved from the service key earlier
 
 ### Customize
-* Follow the customization docs for Stratos, making changes in `custom-src` directory
-* Once your changes are done, switch over to the directory for this repository, and commit your changes to GitHub
+* Follow the [customization docs for Stratos](https://github.com/cloudfoundry-incubator/stratos/blob/v2-master/docs/customizing.md), making changes in `custom-src` directory. (You can visit https://localhost:5443 to compare your modifications with the stock version.)
+* Once your changes are done, switch over to the directory for this repository, commit your changes, and make a pull-request on GitHub
 
 ## Contributing
 
