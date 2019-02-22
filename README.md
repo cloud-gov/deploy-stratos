@@ -5,7 +5,7 @@ This is part of [cloud.gov](https://cloud.gov/), deployment pipeline for [Strato
 ## Customizing the frontend
 
 ### Get dependencies
-* Install [NodeJs v10](https://nodejs.org) - `brew install node@10; brew unlink node; brew link --verwrite --force node@10`
+* Install [NodeJs v10](https://nodejs.org) - `brew install node@10; brew unlink node; brew link --overwrite --force node@10`
 * Install [Angular CLI](https://cli.angular.io/) - `brew install angular-cli`
 * Install [Docker](https://www.docker.com/) - `brew cask install docker`
 * Clone this repository
