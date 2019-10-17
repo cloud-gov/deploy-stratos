@@ -3,7 +3,7 @@ jobs:
 - name: push-stratos-staging
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: stratos-src
       trigger: true
     - get: stratos-config
@@ -66,7 +66,7 @@ jobs:
 - name: push-stratos-production
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - get: stratos-src
       trigger: true
       passed: [push-stratos-staging]
