@@ -4,6 +4,7 @@ applications:
     memory: 1512M
     disk_quota: 1024M
     timeout: 180
-    buildpack: https://github.com/cloudfoundry-incubator/stratos-buildpack#v2.4
+    buildpacks:
+      - https://github.com/cloudfoundry-incubator/stratos-buildpack#v2.4
     health-check-type: port
     instances: 3
