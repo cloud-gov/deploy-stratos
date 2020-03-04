@@ -1,7 +1,7 @@
 # cg-deploy-stratos
 
 This is part of [cloud.gov](https://cloud.gov/), deployment pipeline for
-[Stratos Console](https://github.com/cloudfoundry-incubator/stratos).
+[Stratos Console](https://github.com/cloudfoundry/stratos).
 
 ## Customizing the frontend
 
@@ -17,9 +17,9 @@ This is part of [cloud.gov](https://cloud.gov/), deployment pipeline for
   git clone https://github.com/18F/cg-deploy-stratos.git
   ```
 - Clone the upstream [Stratos
-  project](https://github.com/cloudfoundry-incubator/stratos)
+  project](https://github.com/cloudfoundry/stratos)
   ```
-  git clone https://github.com/cloudfoundry-incubator/stratos.git
+  git clone https://github.com/cloudfoundry/stratos.git
   ```
 - Change your working directory to the upstream repository directory
   ```
