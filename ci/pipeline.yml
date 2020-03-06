@@ -1,6 +1,6 @@
 ---
 jobs:
-- name: push-stratos-staging
+- name: push-stratos-dev
   serial: true
   plan:
   - in_parallel:
@@ -9,31 +9,48 @@ jobs:
     - get: stratos-config
       trigger: true
   - task: prebuild-npm
-    config: &prebuild-config
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: node
-          tag: 10
-      inputs:
-      - name: stratos-src
-      - name: stratos-config
-      outputs:
-      - name: stratos-prebuilt
-      params:
-      run:
-        path: sh
-        args:
-        - -exc
-        - |
-          cd stratos-src
-          ln -sf ../stratos-config/custom-src .
-          npm install
-          npm run store-git-metadata
-          npm run customize
-          npm run prebuild-ui
-          cp -a . ../stratos-prebuilt
+    file: stratos-config/ci/prebuild-npm.yml
+  - put: deploy-stratos-dev
+    params:
+      path: stratos-prebuilt/
+      current_app_name: stratos
+      manifest: stratos-config/manifest.yml
+      show_app_log: true
+      environment_variables:
+        SSO_LOGIN: "true"
+        SSO_OPTIONS: "nosplash,logout"
+        CF_CLIENT: stratos
+        CF_CLIENT_SECRET: ((stratos-client-secret-dev))
+  on_failure:
+    put: slack
+    params:
+      text: |
+        :x: FAILED to deploy Stratos on dev
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: ((slack-channel))
+      username: ((slack-username))
+      icon_url: ((slack-icon-url))
+  on_success:
+    put: slack
+    params:
+      text: |
+        :white_check_mark: Successfully deployed Stratos on dev
+        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+      channel: ((slack-channel))
+      username: ((slack-username))
+      icon_url: ((slack-icon-url))
+- name: push-stratos-staging
+  serial: true
+  plan:
+  - in_parallel:
+    - get: stratos-src
+      trigger: true
+      passed: [push-stratos-dev]
+    - get: stratos-config
+      trigger: true
+      passed: [push-stratos-dev]
+  - task: prebuild-npm
+    file: stratos-config/ci/prebuild-npm.yml
   - put: deploy-stratos-staging
     params:
       path: stratos-prebuilt/
@@ -75,8 +92,7 @@ jobs:
       trigger: true
       passed: [push-stratos-staging]
   - task: prebuild-npm
-    config:
-      <<: *prebuild-config
+    file: stratos-config/ci/prebuild-npm.yml
   - put: deploy-stratos-production
     params:
       path: stratos-prebuilt/
@@ -132,14 +148,24 @@ resources:
   type: git
   source:
     uri: https://github.com/cloudfoundry/stratos.git
-    tag_filter: stable
-    branch: v2-master
+    branch: master
+    # tag_filter: stable
+    # branch: v2-master
 
 - name: stratos-config
   type: git
   source:
     uri: https://github.com/18F/cg-deploy-stratos.git
-    branch: master
+    branch: tsaleh/1304-cg-logo
+
+- name: deploy-stratos-dev
+  type: cf
+  source:
+    api: ((dev-cf-api-url))
+    username: ((dev-cf-username))
+    password: ((dev-cf-password))
+    organization: ((dev-cf-organization))
+    space: ((dev-cf-space))
 
 - name: deploy-stratos-staging
   type: cf
