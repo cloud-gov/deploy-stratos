@@ -7,4 +7,4 @@ cf api "${CF_API_URL}"
 
 cf target -o "${CF_ORG}" -s "${CF_SPACE}"
 
-cf map-route stratos fr.cloud.gov -n dashboard-beta
+cf map-route stratos fr.cloud.gov -n dashboard
