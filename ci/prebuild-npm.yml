@@ -22,9 +22,8 @@ run:
   - -exc
   - |
     cd stratos-src
-    ln -sf ../stratos-config/custom-src .
+    cp -a ../stratos-config/custom-src .
     npm install
     npm run store-git-metadata
-    npm run customize
     npm run prebuild-ui
     cp -a . ../stratos-prebuilt
