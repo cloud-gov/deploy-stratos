@@ -1,9 +1,11 @@
 applications:
   - name: stratos
-    host: dashboard-beta
+    host: dashboard
     memory: 1512M
     disk_quota: 1024M
     timeout: 180
+    # Buildpack pin should match upstream manifest:
+    # https://github.com/cloudfoundry/stratos/blob/stable/manifest.yml
     buildpack: https://github.com/cloudfoundry/stratos-buildpack#v2.4
     health-check-type: port
     instances: 3
