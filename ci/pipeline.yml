@@ -10,7 +10,7 @@ jobs:
       trigger: true
   - task: prebuild-npm
     file: stratos-config/ci/prebuild-npm.yml
-  - put: deploy-stratos-dev
+  - put: cf-dev
     params:
       path: stratos-prebuilt/
       current_app_name: stratos
@@ -51,7 +51,7 @@ jobs:
       passed: [push-stratos-dev]
   - task: prebuild-npm
     file: stratos-config/ci/prebuild-npm.yml
-  - put: deploy-stratos-staging
+  - put: cf-staging
     params:
       path: stratos-prebuilt/
       current_app_name: stratos
@@ -62,10 +62,10 @@ jobs:
         SSO_OPTIONS: "nosplash,logout"
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((stratos-client-secret-staging))
-  - put: deploy-stratos-redirects-staging
+  - put: cf-staging
     params:
       path: stratos-config/redirects
-      manifest: manifest.yml
+      manifest: stratos-config/redirects/manifest.yml
       current_app_name: dashboard-beta-redirects
       vars:
         external-route: dashboard-beta.fr-stage.cloud.gov
@@ -102,7 +102,7 @@ jobs:
       passed: [push-stratos-staging]
   - task: prebuild-npm
     file: stratos-config/ci/prebuild-npm.yml
-  - put: deploy-stratos-production
+  - put: cf-production
     params:
       path: stratos-prebuilt/
       current_app_name: stratos
@@ -113,10 +113,10 @@ jobs:
         SSO_OPTIONS: "nosplash,logout"
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((stratos-client-secret-production))
-  - put: deploy-stratos-redirects-production
+  - put: cf-production
     params:
       path: stratos-config/redirects
-      manifest: manifest.yml
+      manifest: stratos-config/redirects/manifest.yml
       current_app_name: dashboard-beta-redirects
       vars:
         external-route: dashboard-beta.fr.cloud.gov
@@ -177,7 +177,7 @@ resources:
     uri: https://github.com/18F/cg-deploy-stratos.git
     branch: master
 
-- name: deploy-stratos-dev
+- name: cf-dev
   type: cf
   source:
     api: ((dev-cf-api-url))
@@ -186,7 +186,7 @@ resources:
     organization: ((dev-cf-organization))
     space: ((dev-cf-space))
 
-- name: deploy-stratos-staging
+- name: cf-staging
   type: cf
   source:
     api: ((staging-cf-api-url))
@@ -195,25 +195,7 @@ resources:
     organization: ((staging-cf-organization))
     space: ((staging-cf-space))
 
-- name: deploy-stratos-production
-  type: cf
-  source:
-    api: ((production-cf-api-url))
-    username: ((production-cf-username))
-    password: ((production-cf-password))
-    organization: ((production-cf-organization))
-    space: ((production-cf-space))
-
-- name: deploy-stratos-redirects-staging
-  type: cf
-  source:
-    api: ((staging-cf-api-url))
-    username: ((staging-cf-username))
-    password: ((staging-cf-password))
-    organization: ((staging-cf-organization))
-    space: ((staging-cf-space))
-
-- name: deploy-stratos-redirects-production
+- name: cf-production
   type: cf
   source:
     api: ((production-cf-api-url))
