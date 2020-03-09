@@ -220,6 +220,7 @@ resources:
     username: ((production-cf-username))
     password: ((production-cf-password))
     organization: ((production-cf-organization))
+    space: ((production-cf-space))
 
 - name: slack
   type: slack-notification
