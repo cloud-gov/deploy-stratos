@@ -204,6 +204,23 @@ resources:
     organization: ((production-cf-organization))
     space: ((production-cf-space))
 
+- name: deploy-stratos-redirects-staging
+  type: cf
+  source:
+    api: ((staging-cf-api-url))
+    username: ((staging-cf-username))
+    password: ((staging-cf-password))
+    organization: ((staging-cf-organization))
+    space: ((staging-cf-space))
+
+- name: deploy-stratos-redirects-production
+  type: cf
+  source:
+    api: ((production-cf-api-url))
+    username: ((production-cf-username))
+    password: ((production-cf-password))
+    organization: ((production-cf-organization))
+
 - name: slack
   type: slack-notification
   source:
