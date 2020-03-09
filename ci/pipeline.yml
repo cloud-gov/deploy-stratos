@@ -62,6 +62,14 @@ jobs:
         SSO_OPTIONS: "nosplash,logout"
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((stratos-client-secret-staging))
+  - put: deploy-stratos-redirects-staging
+    params:
+      path: stratos-config/redirects
+      manifest: manifest.yml
+      current_app_name: dashboard-beta-redirects
+      vars:
+        external-route: dashboard-beta.fr-stage.cloud.gov
+        app-route: dashboard-beta.apps.fr-stage.cloud.gov
   on_failure:
     put: slack
     params:
@@ -104,6 +112,15 @@ jobs:
         SSO_OPTIONS: "nosplash,logout"
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((stratos-client-secret-production))
+  - put: deploy-stratos-redirects-production
+    params:
+      path: stratos-config/redirects
+      manifest: manifest.yml
+      current_app_name: dashboard-beta-redirects
+      vars:
+        external-route: dashboard-beta.fr.cloud.gov
+        app-route: dashboard-beta.app.cloud.gov
+
   # This is only necessary until we can use variable interpolation in
   # the concourse cf-resource. It's needed here to avoid having multiple
   # manifests for staging and production and because production uses a different
