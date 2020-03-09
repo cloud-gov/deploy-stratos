@@ -9,3 +9,5 @@ applications:
   - route: ((external-route))
   - route: ((app-route))
   stack: cflinuxfs3
+  env:
+    REDIRECT_URL: ((redirect-url))
