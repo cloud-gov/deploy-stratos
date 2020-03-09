@@ -156,7 +156,7 @@ resources:
   type: git
   source:
     uri: https://github.com/18F/cg-deploy-stratos.git
-    branch: tsaleh/1304-cg-logo
+    branch: master
 
 - name: deploy-stratos-dev
   type: cf
