@@ -21,6 +21,9 @@ jobs:
         SSO_OPTIONS: "nosplash,logout"
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((stratos-client-secret-dev))
+      vars:
+        app-route: ((app-hostname-dev))
+        external-route: ((external-hostname-dev))
   on_failure:
     put: slack
     params:
@@ -62,15 +65,18 @@ jobs:
         SSO_OPTIONS: "nosplash,logout"
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((stratos-client-secret-staging))
+      vars:
+        app-route: ((app-hostname-staging))
+        external-route: ((external-hostname-staging))
   - put: cf-staging
     params:
       path: stratos-config/redirects
       manifest: stratos-config/redirects/manifest.yml
       current_app_name: dashboard-beta-redirects
       vars:
-        external-route: dashboard-beta.fr-stage.cloud.gov
-        app-route: dashboard-beta.apps.fr-stage.cloud.gov
-        redirect-url: dashboard.fr-stage.cloud.gov
+        app-route: ((app-hostname-beta-staging))
+        external-route: ((external-hostname-beta-staging))
+        redirect-url: ((external-hostname-staging))
   on_failure:
     put: slack
     params:
@@ -113,30 +119,18 @@ jobs:
         SSO_OPTIONS: "nosplash,logout"
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((stratos-client-secret-production))
+      vars:
+        app-route: ((app-hostname-production))
+        external-route: ((external-hostname-production))
   - put: cf-production
     params:
       path: stratos-config/redirects
       manifest: stratos-config/redirects/manifest.yml
       current_app_name: dashboard-beta-redirects
       vars:
-        external-route: dashboard-beta.fr.cloud.gov
-        app-route: dashboard-beta.app.cloud.gov
-        redirect-url: dashboard.fr.cloud.gov
-
-  # This is only necessary until we can use variable interpolation in
-  # the concourse cf-resource. It's needed here to avoid having multiple
-  # manifests for staging and production and because production uses a different
-  # default domain than staging.
-  # See: https://docs.cloudfoundry.org/devguide/deploy-apps/manifest.html#variable-substitution
-  # See: https://github.com/concourse/cf-resource/pull/56
-  - task: map-routes-production
-    file: stratos-config/ci/cf-map-routes.yml
-    params:
-      CF_API_URL: ((production-cf-api-url))
-      CF_USERNAME: ((production-cf-username))
-      CF_PASSWORD: ((production-cf-password))
-      CF_ORG: ((production-cf-organization))
-      CF_SPACE: ((production-cf-space))
+        app-route: ((app-hostname-beta-production))
+        external-route: ((external-hostname-beta-production))
+        redirect-url: ((external-hostname-production))
   on_failure:
     put: slack
     params:

@@ -9,3 +9,6 @@ applications:
     buildpack: https://github.com/cloudfoundry/stratos-buildpack#v2.4
     health-check-type: port
     instances: 3
+    routes:
+      - route: ((app-route))
+      - route: ((external-route))
