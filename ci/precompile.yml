@@ -1,0 +1,41 @@
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: node
+    tag: 10
+
+inputs:
+- name: upstream
+- name: config
+
+outputs:
+- name: precompiled
+
+params:
+  NG_CLI_ANALYTICS: "false"
+
+caches:
+  - path: .npm
+  - path: upstream/node_modules
+
+run:
+  path: sh
+  args:
+  - -exc
+  - |
+    cd upstream
+    tar -xf source.tar.gz --strip-components=1
+
+    cp -a ../config/custom-src .
+    npm config set cache $(pwd)/../.npm --global
+    npm install
+    npm run store-git-metadata
+    npm run prebuild-ui
+    cp ../config/manifest.yml .
+
+    tar -czf ../precompiled/stratos.tgz \
+      --exclude-ignore=.cfignore \
+      --exclude=source.tar.gz \
+      .
