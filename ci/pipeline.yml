@@ -218,8 +218,8 @@ resources:
   type: git
   icon: github-circle
   source:
-    uri: https://github.com/18F/cg-deploy-stratos.git
-    branch: tsaleh/track-upstream-releases
+    uri: ((github-uri))
+    branch: ((github-branch))
 
 - name: cf-dev
   type: cf
