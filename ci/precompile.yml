@@ -7,7 +7,7 @@ image_resource:
     tag: 10
 
 inputs:
-- name: upstream
+- name: stratos-release
 - name: config
 
 outputs:
@@ -18,14 +18,14 @@ params:
 
 caches:
   - path: .npm
-  - path: upstream/node_modules
+  - path: stratos-release/node_modules
 
 run:
   path: sh
   args:
   - -exc
   - |
-    cd upstream
+    cd stratos-release
     tar -xf source.tar.gz --strip-components=1
 
     cp -a ../config/custom-src .
