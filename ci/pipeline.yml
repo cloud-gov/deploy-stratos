@@ -3,7 +3,7 @@ jobs:
 - name: new-major-upstream
   serial: true
   plan:
-    - get: next-upstream
+    - get: next-stratos-release
       trigger: true
       params:
         globs: do-not-download-assets
@@ -19,7 +19,7 @@ jobs:
   serial: true
   plan:
   - in_parallel:
-    - get: upstream
+    - get: stratos-release
       trigger: true
       params:
         include_source_tarball: true
@@ -194,8 +194,9 @@ resource_types:
     repository: 18fgsa/s3-resource
 
 resources:
-- name: upstream
+- name: stratos-release
   type: github-release
+  icon: github-circle
   source:
     owner: cloudfoundry
     repository: stratos
@@ -203,8 +204,9 @@ resources:
     # If you change this, change the one below as well.
     tag_filter: '^(3\..*)'
 
-- name: next-upstream
+- name: next-stratos-release
   type: github-release
+  icon: github-circle
   source:
     owner: cloudfoundry
     repository: stratos
@@ -214,12 +216,14 @@ resources:
 
 - name: config
   type: git
+  icon: github-circle
   source:
     uri: https://github.com/18F/cg-deploy-stratos.git
     branch: tsaleh/track-upstream-releases
 
 - name: cf-dev
   type: cf
+  icon: cloud-upload
   source:
     api: ((dev-cf-api-url))
     username: ((dev-cf-username))
@@ -229,6 +233,7 @@ resources:
 
 - name: cf-staging
   type: cf
+  icon: cloud-upload
   source:
     api: ((staging-cf-api-url))
     username: ((staging-cf-username))
@@ -238,6 +243,7 @@ resources:
 
 - name: cf-production
   type: cf
+  icon: cloud-upload
   source:
     api: ((production-cf-api-url))
     username: ((production-cf-username))
@@ -247,6 +253,7 @@ resources:
 
 - name: precompiled
   type: s3-iam
+  icon: database
   source:
     bucket: cg-build-artifacts
     versioned_file: deploy-stratos/stratos.tgz
@@ -255,5 +262,6 @@ resources:
 
 - name: slack
   type: slack-notification
+  icon: slack
   source:
     url: ((slack-webhook-url))
