@@ -11,3 +11,5 @@ applications:
     - "https://github.com/cloudfoundry/stratos-buildpack#v3"
     health-check-type: port
     instances: 3
+    services:
+    - stratos-db
