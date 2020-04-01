@@ -39,6 +39,19 @@ jobs:
     trigger: true
     params:
       unpack: true
+  - put: create-db
+    resource: cf-cli-dev
+    params: &db-params
+      command: create-service
+      update_service: true
+      # Note, wait_for_service doesn't seem to be working:
+      # https://github.com/nulldriver/cf-cli-resource/issues/77
+      # If a new deployment, manually re-trigger the build once the RDS is up.
+      wait_for_service: true
+      timeout: 1200  # RDS take a long time to provision
+      service_instance: stratos-db
+      service: aws-rds
+      plan: medium-psql
   - put: cf-dev
     params:
       path: precompiled/
@@ -83,6 +96,10 @@ jobs:
         unpack: true
     - get: config
       trigger: false
+  - put: create-db
+    resource: cf-cli-staging
+    params:
+      <<: *db-params
   - put: cf-staging
     params:
       path: precompiled/
@@ -138,6 +155,10 @@ jobs:
         unpack: true
     - get: config
       trigger: false
+  - put: create-db
+    resource: cf-cli-production
+    params:
+      <<: *db-params
   - put: cf-production
     params:
       path: precompiled/
@@ -192,6 +213,12 @@ resource_types:
   type: docker-image
   source:
     repository: 18fgsa/s3-resource
+
+- name: cf-cli-resource
+  type: docker-image
+  source:
+    repository: nulldriver/cf-cli-resource
+    tag: latest
 
 resources:
 - name: stratos-release
@@ -249,6 +276,33 @@ resources:
     username: ((production-cf-username))
     password: ((production-cf-password))
     organization: ((production-cf-organization))
+    space: ((production-cf-space))
+
+- name: cf-cli-dev
+  type: cf-cli-resource
+  source:
+    api: ((dev-cf-api-url))
+    username: ((dev-cf-username))
+    password: ((dev-cf-password))
+    org: ((dev-cf-organization))
+    space: ((dev-cf-space))
+
+- name: cf-cli-staging
+  type: cf-cli-resource
+  source:
+    api: ((staging-cf-api-url))
+    username: ((staging-cf-username))
+    password: ((staging-cf-password))
+    org: ((staging-cf-organization))
+    space: ((staging-cf-space))
+
+- name: cf-cli-production
+  type: cf-cli-resource
+  source:
+    api: ((production-cf-api-url))
+    username: ((production-cf-username))
+    password: ((production-cf-password))
+    org: ((production-cf-organization))
     space: ((production-cf-space))
 
 - name: precompiled
