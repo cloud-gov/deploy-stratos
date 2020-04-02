@@ -44,8 +44,8 @@ jobs:
     params: &db-params
       command: create-service
       update_service: true
-      # Note, wait_for_service doesn't seem to be working:
-      # https://github.com/nulldriver/cf-cli-resource/issues/77
+      # Note, the RDS broker doesn't return the correct status while provisioning:
+      # https://github.com/18F/aws-broker/issues/59
       # If a new deployment, manually re-trigger the build once the RDS is up.
       wait_for_service: true
       timeout: 1200  # RDS take a long time to provision
