@@ -63,6 +63,7 @@ jobs:
       environment_variables:
         SSO_LOGIN: "true"
         SSO_OPTIONS: "nosplash,logout"
+        SSO_WHITELIST: "https://((dev-cf-route))"
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((dev-cf-client-secret))
         SESSION_STORE_SECRET: ((dev-session-store-secret))
@@ -111,7 +112,7 @@ jobs:
       environment_variables:
         SSO_LOGIN: "true"
         SSO_OPTIONS: "nosplash,logout"
-        SSO_WHITELIST: "https://dashboard.fr-stage.cloud.gov"
+        SSO_WHITELIST: "https://((staging-cf-route))"
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((staging-cf-client-secret))
         SESSION_STORE_SECRET: ((staging-session-store-secret))
@@ -171,7 +172,7 @@ jobs:
       environment_variables:
         SSO_LOGIN: "true"
         SSO_OPTIONS: "nosplash,logout"
-        SSO_WHITELIST: "https://dashboard.fr.cloud.gov"
+        SSO_WHITELIST: "https://((production-cf-route))"
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((production-cf-client-secret))
         SESSION_STORE_SECRET: ((production-session-store-secret))
