@@ -66,6 +66,7 @@ jobs:
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((dev-cf-client-secret))
         SESSION_STORE_SECRET: ((dev-session-store-secret))
+        SSO_WHITELIST: "https://((dev-cf-route))/*"
   on_failure:
     put: slack
     params:
@@ -114,6 +115,7 @@ jobs:
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((staging-cf-client-secret))
         SESSION_STORE_SECRET: ((staging-session-store-secret))
+        SSO_WHITELIST: "https://((staging-cf-route))/*"
   - put: cf-staging
     # This can eventually be removed, once we're sure nobody is linking to
     # dashboard-beta.
@@ -174,6 +176,7 @@ jobs:
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((production-cf-client-secret))
         SESSION_STORE_SECRET: ((production-session-store-secret))
+        SSO_WHITELIST: "https://((production-cf-route))/*"
   - put: cf-production
     # This can eventually be removed, once we're sure nobody is linking to
     # dashboard-beta.
