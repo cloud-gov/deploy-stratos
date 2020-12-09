@@ -6,7 +6,7 @@ jobs:
     - get: next-stratos-release
       trigger: true
       params:
-        globs: do-not-download-assets
+        globs: [do-not-download-assets]
     - put: slack
       params:
         text: |
