@@ -32,6 +32,7 @@ run:
     npm config set cache $(pwd)/../.npm --global
     npm install
     npm run store-git-metadata
+    npm run build-devkit
     npm run prebuild-ui
     cp ../config/manifest.yml .
 
