@@ -230,21 +230,21 @@ resources:
   type: github-release
   icon: github-circle
   source:
-    owner: cloudfoundry
+    owner: cloud-gov
     repository: stratos
     access_token: ((github-access-token))
     # If you change this, change the one below as well.
-    tag_filter: '^(3\..*)'
+    tag_filter: '^(4\..*)'
 
 - name: next-stratos-release
   type: github-release
   icon: github-circle
   source:
-    owner: cloudfoundry
+    owner: cloud-gov
     repository: stratos
     access_token: ((github-access-token))
     # If you change this, change the one above as well.
-    tag_filter: '^(4\..*)'
+    tag_filter: '^(5\..*)'
 
 - name: config
   type: git
