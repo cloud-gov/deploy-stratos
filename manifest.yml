@@ -8,7 +8,7 @@ applications:
     buildpacks:
     # Buildpack pin should match upstream manifest:
     # https://github.com/cloudfoundry/stratos/blob/stable/manifest.yml
-    - "https://github.com/cloudfoundry/stratos-buildpack#v3"
+    - "https://github.com/cloudfoundry/stratos-buildpack#v4.0"
     health-check-type: port
     instances: 3
     services:
