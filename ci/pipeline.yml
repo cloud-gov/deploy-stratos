@@ -230,7 +230,7 @@ resources:
   type: github-release
   icon: github-circle
   source:
-    owner: cloudfoundry
+    owner: cloud-gov
     repository: stratos
     access_token: ((github-access-token))
     # If you change this, change the one below as well.
@@ -240,7 +240,7 @@ resources:
   type: github-release
   icon: github-circle
   source:
-    owner: cloudfoundry
+    owner: cloud-gov
     repository: stratos
     access_token: ((github-access-token))
     # If you change this, change the one above as well.
