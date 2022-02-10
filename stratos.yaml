@@ -1,0 +1,6 @@
+packages:
+  exclude:
+    - '@stratosui/kubernetes'
+    - '@stratosui/desktop-extensions'
+    - '@example/extensions'
+    - '@example/theme'
