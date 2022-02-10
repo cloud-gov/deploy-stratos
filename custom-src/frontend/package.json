@@ -1,9 +1,9 @@
 {
   "name": "@cloud-gov/theme",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "stratos": {
     "assets": {
-      "assets/core": "core/assets",
+      "assets": "core/assets",
       "favicon.ico": "favicon.ico"
     }
   }
