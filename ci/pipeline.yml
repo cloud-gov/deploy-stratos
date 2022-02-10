@@ -50,7 +50,8 @@ jobs:
         - |
           cd stratos-source
 
-          cp -a ../config/custom-src/frontend ./src/frontend/packages/cloud-gov/
+          cp -a ../config/custom_theme ./src/frontend/packages/custom_theme
+          cp ../config/stratos.yaml .
           npm config set cache $(pwd)/../.npm --global
           npm install
           npm run build
