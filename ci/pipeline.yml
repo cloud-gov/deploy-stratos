@@ -19,14 +19,47 @@ jobs:
   serial: true
   plan:
   - in_parallel:
-    - get: stratos-release
+    - get: stratos-source
       trigger: true
       params:
         include_source_tarball: true
     - get: config
       trigger: true
   - task: precompile
-    file: config/ci/precompile.yml
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: node
+          tag: 16
+      inputs:
+      - name: stratos-source
+      - name: config
+      outputs:
+      - name: precompiled
+      params:
+        NG_CLI_ANALYTICS: "false"
+      caches:
+        - path: .npm
+        - path: stratos-source/node_modules
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd stratos-source
+
+          cp -a ../config/custom-src/frontend ./src/frontend/packages/cloud-gov/
+          npm config set cache $(pwd)/../.npm --global
+          npm install
+          npm run build
+          cp ../config/manifest.yml .
+
+          tar -czf ../precompiled/stratos.tgz \
+            --exclude-ignore=.cfignore \
+            .
+
   - put: precompiled
     params:
       file: precompiled/stratos.tgz
@@ -61,6 +94,7 @@ jobs:
       vars:
         route: ((dev-cf-route))
       environment_variables:
+        CF_API_URL: ((dev-cf-api-url))
         SSO_LOGIN: "true"
         SSO_OPTIONS: "nosplash,logout"
         SSO_WHITELIST: "https://((dev-cf-route))/*"
@@ -226,15 +260,12 @@ resource_types:
     tag: latest
 
 resources:
-- name: stratos-release
-  type: github-release
+- name: stratos-source
+  type: git
   icon: github-circle
   source:
-    owner: cloud-gov
-    repository: stratos
-    access_token: ((github-access-token))
-    # If you change this, change the one below as well.
-    tag_filter: '^(4\..*)'
+    uri: https://github.com/cloud-gov/stratos
+    branch: master
 
 - name: next-stratos-release
   type: github-release
