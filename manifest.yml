@@ -2,8 +2,8 @@ applications:
   - name: stratos
     routes:
       - route: ((route))
-    memory: 2048M
-    disk_quota: 1024M
+    memory: 512M
+    disk_quota: 512M
     timeout: 180
     buildpacks:
     # Buildpack pin should match upstream manifest:
