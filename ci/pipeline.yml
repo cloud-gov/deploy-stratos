@@ -266,7 +266,7 @@ resources:
   icon: github-circle
   source:
     uri: https://github.com/cloud-gov/stratos
-    branch: master
+    tag_filter: '4.1.0'
 
 - name: next-stratos-release
   type: github-release
