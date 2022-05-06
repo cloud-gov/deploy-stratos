@@ -14,4 +14,4 @@ applications:
     - stratos-db
     env: 
       GO_INSTALL_PACKAGE_SPEC: precompiled/src/jetstream
-      GOVERSION: go1.18.1
+      GOVERSION: go1.18
