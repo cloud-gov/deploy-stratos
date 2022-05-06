@@ -13,5 +13,4 @@ applications:
     services:
     - stratos-db
     env: 
-      GOPACKAGENAME: rg-stratos
-      GO_INSTALL_PACKAGE_SPEC: src/jetstream
+      GOPACKAGENAME: stratos
