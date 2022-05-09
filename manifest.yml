@@ -7,7 +7,7 @@ applications:
     timeout: 180
     buildpacks:
     # Buildpack pin should match upstream manifest:
-    - https://github.com/cloud-gov/stratos-buildpack/tree/rg-stratos-buildpack
+    - https://github.com/cloud-gov/stratos-buildpack
     health-check-type: port
     instances: 3
     services:
