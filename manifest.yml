@@ -7,7 +7,7 @@ applications:
     timeout: 180
     buildpacks:
     # Buildpack pin should match upstream manifest:
-    - go-buildpack
+    - go_buildpack
     health-check-type: port
     instances: 3
     services:
