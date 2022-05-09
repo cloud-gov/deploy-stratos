@@ -7,10 +7,9 @@ applications:
     timeout: 180
     buildpacks:
     # Buildpack pin should match upstream manifest:
-    - go_buildpack
+    - go-buildpack
     health-check-type: port
     instances: 3
     services:
     - stratos-db
-    env: 
-      GOVERSION: go1.18.1
+
