@@ -12,4 +12,6 @@ applications:
     instances: 3
     services:
     - stratos-db
+    env:
+      GOPACKAGENAME: stratos
 
