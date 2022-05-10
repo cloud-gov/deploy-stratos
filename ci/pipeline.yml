@@ -147,6 +147,8 @@ jobs:
       vars:
         route: ((staging-cf-route))
       environment_variables:
+        GO_VERSION: "1.18.1"
+        NODE_VERSION: "15.15"
         SSO_LOGIN: "true"
         SSO_OPTIONS: "nosplash,logout"
         SSO_WHITELIST: "https://((staging-cf-route))/*"
