@@ -95,6 +95,8 @@ jobs:
       vars:
         route: ((dev-cf-route))
       environment_variables:
+        GO_VERSION: "1.18.1"
+        NODE_VERSION: "15.15"
         CF_API_URL: ((dev-cf-api-url))
         SSO_LOGIN: "true"
         SSO_OPTIONS: "nosplash,logout"
@@ -102,8 +104,6 @@ jobs:
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((dev-cf-client-secret))
         SESSION_STORE_SECRET: ((dev-session-store-secret))
-        GO_VERSION: "1.18.1"
-        NODE_VERSION: "15.15"
   on_failure:
     put: slack
     params:
