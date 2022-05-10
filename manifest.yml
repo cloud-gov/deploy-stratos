@@ -12,4 +12,7 @@ applications:
     instances: 3
     services:
     - stratos-db
+    env:
+      GO_VERSION: "1.18.1"
+      NODE_VERSION: "15.15"
 
