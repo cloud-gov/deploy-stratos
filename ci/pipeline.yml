@@ -96,7 +96,7 @@ jobs:
         route: ((dev-cf-route))
       environment_variables:
         GO_VERSION: "1.18.1"
-        GO_MD5: "aaaa70f2fb5a7803"
+        GO_SHA256: "aaaa70f2fb5a7803"
         NODE_VERSION: "15.15"
         CF_API_URL: ((dev-cf-api-url))
         SSO_LOGIN: "true"
