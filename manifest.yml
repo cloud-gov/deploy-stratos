@@ -14,6 +14,6 @@ applications:
     - stratos-db
     env:
       GO_VERSION: "1.18.1"
-      GO_MD5: "aaaa70f2fb5a78030ef77ec555a09acbb4dae82c3039994eec7aa5888c5cf902"
+      GO_MD5: "aaaa70f2fb5a7803"
       NODE_VERSION: "15.15"
 
