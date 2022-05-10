@@ -102,8 +102,8 @@ jobs:
         CF_CLIENT: stratos
         CF_CLIENT_SECRET: ((dev-cf-client-secret))
         SESSION_STORE_SECRET: ((dev-session-store-secret))
-        GO_VERSION: 1.18.1
-        NODE_VERSION: 15.15
+        GO_VERSION: "1.18.1"
+        NODE_VERSION: "15.15"
   on_failure:
     put: slack
     params:
