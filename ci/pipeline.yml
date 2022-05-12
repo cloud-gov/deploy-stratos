@@ -95,9 +95,7 @@ jobs:
       vars:
         route: ((dev-cf-route))
       environment_variables:
-        GO_VERSION: "1.18.1"
-        GO_SHA256: "aaa70f2fb5a78030ef77ec555a09acbb4dae82c3039994eec7aa5888c5cf902"
-        NODE_VERSION: "15.15"
+        #NODE_VERSION: "15.15"
         CF_API_URL: ((dev-cf-api-url))
         SSO_LOGIN: "true"
         SSO_OPTIONS: "nosplash,logout"
