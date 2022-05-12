@@ -7,13 +7,10 @@ applications:
     timeout: 180
     buildpacks:
     # Buildpack pin should match upstream manifest:
-    - https://github.com/cloud-gov/stratos-buildpack#rg-stratos-buildpack
+    - go-buildpack
     health-check-type: port
     instances: 3
     services:
     - stratos-db
-    env:
-      GO_VERSION: "1.18.1"
-      GO_SHA256: "aaaa70f2fb5a7803"
-      NODE_VERSION: "15.15"
+    command: ./deploy/cloud-foundry/build.sh && ./deploy/cloud-foundry/start.sh
 
