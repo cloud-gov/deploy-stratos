@@ -13,7 +13,7 @@ applications:
     services:
     - stratos-db
     env: 
-      GOPACKAGENAME: ./src/jetstream/jetstream
+      GOPACKAGENAME: ./src/jetstream
       # GO_INSTALL_PACKAGE_SPEC: ./src/jetstream
       # GO_VERSION: "1.18.1"
       # GO_SHA256: "aaa70f2fb5a78030ef77ec555a09acbb4dae82c3039994eec7aa5888c5cf902"
