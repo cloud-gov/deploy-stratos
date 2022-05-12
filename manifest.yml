@@ -7,7 +7,7 @@ applications:
     timeout: 180
     buildpacks:
     # Buildpack pin should match upstream manifest:
-    - go_buildpack
+    - go_buildpack#v1.9.46 
     health-check-type: port
     instances: 3
     services:
@@ -18,4 +18,4 @@ applications:
       # GO_VERSION: "1.18.1"
       # GO_SHA256: "aaa70f2fb5a78030ef77ec555a09acbb4dae82c3039994eec7aa5888c5cf902"
     command: 
-      ./deploy/cloud-foundry/build.sh && ./deploy/cloud-foundry/start.sh
+      go mod vendor ./src/jetstream && ./deploy/cloud-foundry/build.sh && ./deploy/cloud-foundry/start.sh
