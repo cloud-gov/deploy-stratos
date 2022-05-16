@@ -13,9 +13,8 @@ applications:
     services:
     - stratos-db
     env: 
-      GOPACKAGENAME: jetstream
-      # GO_INSTALL_PACKAGE_SPEC: ./src/jetstream
-      # GO_VERSION: "1.18.1"
-      # GO_SHA256: "aaa70f2fb5a78030ef77ec555a09acbb4dae82c3039994eec7aa5888c5cf902"
-    command: 
-      go mod vendor jetstream && ./deploy/cloud-foundry/build.sh && ./deploy/cloud-foundry/start.sh
+      GOPACKAGENAME: jetstream # probably needs to be precompiled/jetstream as this wasn't found either`
+      GO_INSTALL_PACKAGE_SPEC: stratos/src/jetstream
+      GO_VERSION: "1.18.1"
+      GO_SHA256: "aaa70f2fb5a78030ef77ec555a09acbb4dae82c3039994eec7aa5888c5cf902"
+    command: go mod vendor jetstream && ./deploy/cloud-foundry/build.sh && ./deploy/cloud-foundry/start.sh
