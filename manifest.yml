@@ -7,7 +7,7 @@ applications:
     timeout: 180
     buildpacks:
     # Buildpack pin should match upstream manifest:
-    - go-buildpack-release
+    - "https://github.com/cloudfoundry/go-buildpack-release"
     health-check-type: port
     instances: 3
     services:
