@@ -5,9 +5,7 @@ applications:
     memory: 512M
     disk_quota: 512M
     timeout: 180
-    buildpacks:
-    # Buildpack pin should match upstream manifest:
-    - "https://github.com/cloudfoundry/go-buildpack"
+    buildpack: https://github.com/cloudfoundry/go-buildpack.git
     health-check-type: port
     instances: 3
     services:
