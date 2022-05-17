@@ -12,6 +12,7 @@ applications:
     instances: 3
     services:
     - stratos-db
-    command:  ./deploy/cloud-foundry/build.sh && ./deploy/cloud-foundry/start.sh
-    - env:
+    command:  
+      - ./deploy/cloud-foundry/build.sh && ./deploy/cloud-foundry/start.sh
+    env:
       GOPACKAGENAME: stratos
