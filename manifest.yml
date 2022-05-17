@@ -14,3 +14,4 @@ applications:
       ./deploy/cloud-foundry/build.sh && ./deploy/cloud-foundry/start.sh
     env:
       GOPACKAGENAME: stratos
+      GO_INSTALL_PACKAGE_SPEC: src/jetstream
