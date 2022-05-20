@@ -5,13 +5,14 @@ applications:
     memory: 512M
     disk_quota: 512M
     timeout: 180
-    buildpack: https://github.com/cloudfoundry/go-buildpack.git
+    buildpacks:
+    # Buildpack pin should match upstream manifest:
+    - https://github.com/cloud-gov/stratos-buildpack#rg-stratos-buildpack
     health-check-type: port
     instances: 3
     services:
     - stratos-db
-    command:  
-      ./deploy/cloud-foundry/build.sh && ./deploy/cloud-foundry/start.sh
     env:
-      GOPACKAGENAME: stratos
-      GO_INSTALL_PACKAGE_SPEC: stratos/src/jetstream
+      GO_VERSION: "1.18.1"
+      GO_SHA256: "aaaa70f2fb5a7803"
+      NODE_VERSION: "15.15"
