@@ -121,9 +121,9 @@ jobs:
       plan: medium-psql
   - put: cf-dev
     params:
-      path: precompiled/
+      path: compiled
       current_app_name: stratos
-      manifest: precompiled/manifest.yml
+      manifest: compiled/manifest.yml
       show_app_log: true
       vars:
         route: ((dev-cf-route))
@@ -161,7 +161,7 @@ jobs:
   serial: true
   plan:
   - in_parallel:
-    - get: precompiled
+    - get: compiled
       passed: [deploy-dev]
       trigger: true
       params:
@@ -174,9 +174,9 @@ jobs:
       <<: *db-params
   - put: cf-staging
     params:
-      path: precompiled/
+      path: compiled/
       current_app_name: stratos
-      manifest: precompiled/manifest.yml
+      manifest: compiled/manifest.yml
       show_app_log: true
       vars:
         route: ((staging-cf-route))
@@ -224,7 +224,7 @@ jobs:
   serial: true
   plan:
   - in_parallel:
-    - get: precompiled
+    - get: compiled
       passed: [deploy-staging]
       trigger: true
       params:
@@ -237,9 +237,9 @@ jobs:
       <<: *db-params
   - put: cf-production
     params:
-      path: precompiled/
+      path: compiled/
       current_app_name: stratos
-      manifest: precompiled/manifest.yml
+      manifest: compiled/manifest.yml
       show_app_log: true
       vars:
         route: ((production-cf-route))
