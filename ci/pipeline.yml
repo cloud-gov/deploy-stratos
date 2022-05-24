@@ -65,11 +65,44 @@ jobs:
     params:
       file: precompiled/stratos.tgz
 
-- name: deploy-dev
+- name: compile-stratos
   serial: true
   plan:
   - get: precompiled
     passed: [compile-assets]
+    trigger: true
+    params:
+      unpack: true
+  - task: build
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: go
+          tag: 1.18-stretch
+      inputs:
+      - name: precompiled
+      outputs:
+      - name: compiled
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd precompiled
+
+          ./deploy/cloud-foundry/build.sh
+
+  - put: compiled
+    params:
+      file: compiled/compiled-stratos.tgz
+
+- name: deploy-dev
+  serial: true
+  plan:
+  - get: compiled
+    passed: [compile-stratos]
     trigger: true
     params:
       unpack: true
@@ -353,6 +386,15 @@ resources:
   source:
     bucket: cg-build-artifacts
     versioned_file: deploy-stratos/stratos.tgz
+    region_name: us-gov-west-1
+    server_side_encryption: AES256
+
+- name: compiled
+  type: s3-iam
+  icon: database
+  source:
+    bucket: cg-build-artifacts
+    versioned_file: deploy-stratos/compiled-stratos.tgz
     region_name: us-gov-west-1
     server_side_encryption: AES256
 

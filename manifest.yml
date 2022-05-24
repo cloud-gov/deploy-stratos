@@ -6,13 +6,9 @@ applications:
     disk_quota: 512M
     timeout: 180
     buildpacks:
-    - go_buildpack
+    - binary_buildpack
     health-check-type: port
     instances: 3
     services:
     - stratos-db
-    env:
-      GO_VERSION: "1.18"
-      GO_INSTALL_PACKAGE_SPEC: github.com/cloud-gov/stratos/tree/apb/rollback-stratos/src/jetstream
-      GOPACKAGENAME: jetstream
-    command: ls
+    command: ./jetstream
