@@ -37,7 +37,7 @@ jobs:
       - name: stratos-source
       - name: config
       outputs:
-      - name: precompiled
+      - name: pre-compiled
       params:
         NG_CLI_ANALYTICS: "false"
       caches:
@@ -57,38 +57,46 @@ jobs:
           npm run prebuild-ui
           cp ../config/manifest.yml .
 
-          tar -czf ../precompiled/stratos.tgz \
+          tar -czf ../pre-compiled/precompiled-stratos.tgz \
             --exclude-ignore=.cfignore \
             .
-
-  - put: precompiled
+  - put: pre-compiled
     params:
-      file: precompiled/stratos.tgz
+      file: pre-compiled/precompiled-stratos.tgz
 
 - name: compile-stratos
   serial: true
   plan:
-  - get: precompiled
+  - get: pre-compiled
     passed: [compile-assets]
     trigger: true
+    params: 
+     unpack: true
   - task: build-stratos
     config:
+      inputs:
+        - name: pre-compiled
+      outputs:
+        - name: compiled
       platform: linux
       image_resource:
         type: docker-image
-        source:
-          repository: go
-          tag: 1.18-stretch
-      inputs:
-        - name: precompiled
-      outputs:
-      - name: compiled
+        source: 
+          repository: golang
+          tag: 1.18.3-stretch
       run:
-        path: sh
+        path: /bin/sh
         args:
-        - -exc
-        - |
-          ls
+          - -cx
+          - |
+            ls -lah ./pre-compiled
+            apt-get update && apt-get install unzip
+            cd pre-compiled
+            ls -lah 
+            rm -rf dist
+            deploy/cloud-foundry/build.sh
+            tar zcvf compiled-stratos.tgz .
+            mv compiled-stratos.tgz ../compiled/
 
   - put: compiled
     params:
@@ -125,7 +133,7 @@ jobs:
         route: ((dev-cf-route))
       environment_variables:
         # NODE_VERSION: "15.15"
-        GO_VERSION: "1.18.1"
+        # GO_VERSION: "1.18.1"
         GO_SHA256: "aaaa70f2fb5a7803"
         CF_API_URL: ((dev-cf-api-url))
         SSO_LOGIN: "true"
@@ -376,12 +384,12 @@ resources:
     org: ((production-cf-organization))
     space: ((production-cf-space))
 
-- name: precompiled
+- name: pre-compiled
   type: s3-iam
   icon: database
   source:
     bucket: cg-build-artifacts
-    versioned_file: deploy-stratos/stratos.tgz
+    versioned_file: deploy-stratos/precompiled-stratos.tgz
     region_name: us-gov-west-1
     server_side_encryption: AES256
 
@@ -399,3 +407,4 @@ resources:
   icon: slack
   source:
     url: ((slack-webhook-url))
+
