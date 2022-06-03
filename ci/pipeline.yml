@@ -183,7 +183,7 @@ jobs:
       vars:
         route: ((staging-cf-route))
       environment_variables:
-        GO_VERSION: "1.18.1"
+        GO_VERSION: "1.18.3"
         NODE_VERSION: "15.15"
         SSO_LOGIN: "true"
         SSO_OPTIONS: "nosplash,logout"
