@@ -306,7 +306,8 @@ resources:
   icon: github-circle
   source:
     uri: https://github.com/cloud-gov/stratos
-    branch: master
+      #branch: master
+    branch: apb/rollback-stratos
 
 - name: next-stratos-release
   type: github-release
