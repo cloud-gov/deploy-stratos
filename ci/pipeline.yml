@@ -132,7 +132,6 @@ jobs:
       vars:
         route: ((dev-cf-route))
       environment_variables:
-        # NODE_VERSION: "15.15"
         # GO_VERSION: "1.18.1"
         GO_SHA256: "aaaa70f2fb5a7803"
         CF_API_URL: ((dev-cf-api-url))
