@@ -1,20 +1,5 @@
 ---
 jobs:
-- name: new-major-upstream
-  serial: true
-  plan:
-    - get: next-stratos-release
-      trigger: true
-      params:
-        globs: [do-not-download-assets]
-    - put: slack
-      params:
-        text: |
-          :exclamation: A new _major_ version of stratos is available!  Update the pipeline.yml to start deploying it.
-        channel: ((production-slack-channel))
-        username: ((slack-username))
-        icon_url: ((slack-icon-url))
-
 - name: compile-assets
   serial: true
   plan:
@@ -37,7 +22,7 @@ jobs:
       - name: stratos-source
       - name: config
       outputs:
-      - name: precompiled
+      - name: pre-compiled
       params:
         NG_CLI_ANALYTICS: "false"
       caches:
@@ -57,19 +42,56 @@ jobs:
           npm run prebuild-ui
           cp ../config/manifest.yml .
 
-          tar -czf ../precompiled/stratos.tgz \
+          tar -czf ../pre-compiled/precompiled-stratos.tgz \
             --exclude-ignore=.cfignore \
             .
-
-  - put: precompiled
+  - put: pre-compiled
     params:
-      file: precompiled/stratos.tgz
+      file: pre-compiled/precompiled-stratos.tgz
+
+- name: compile-stratos
+  serial: true
+  plan:
+  - get: pre-compiled
+    passed: [compile-assets]
+    trigger: true
+    params: 
+     unpack: true
+  - task: build-stratos
+    config:
+      inputs:
+        - name: pre-compiled
+      outputs:
+        - name: compiled
+      platform: linux
+      image_resource:
+        type: docker-image
+        source: 
+          repository: golang
+          tag: 1.18.3-stretch
+      run:
+        path: /bin/sh
+        args:
+          - -cx
+          - |
+            ls -lah ./pre-compiled
+            apt-get update && apt-get install unzip
+            cd pre-compiled
+            ls -lah 
+            rm -rf dist
+            deploy/cloud-foundry/build.sh
+            tar zcvf compiled-stratos.tgz .
+            mv compiled-stratos.tgz ../compiled/
+
+  - put: compiled
+    params:
+      file: compiled/compiled-stratos.tgz
 
 - name: deploy-dev
   serial: true
   plan:
-  - get: precompiled
-    passed: [compile-assets]
+  - get: compiled
+    passed: [compile-stratos]
     trigger: true
     params:
       unpack: true
@@ -88,13 +110,14 @@ jobs:
       plan: medium-psql
   - put: cf-dev
     params:
-      path: precompiled/
+      path: compiled
       current_app_name: stratos
-      manifest: precompiled/manifest.yml
+      manifest: compiled/manifest.yml
       show_app_log: true
       vars:
         route: ((dev-cf-route))
       environment_variables:
+        GO_SHA256: "aaaa70f2fb5a7803"
         CF_API_URL: ((dev-cf-api-url))
         SSO_LOGIN: "true"
         SSO_OPTIONS: "nosplash,logout"
@@ -125,7 +148,7 @@ jobs:
   serial: true
   plan:
   - in_parallel:
-    - get: precompiled
+    - get: compiled
       passed: [deploy-dev]
       trigger: true
       params:
@@ -138,9 +161,9 @@ jobs:
       <<: *db-params
   - put: cf-staging
     params:
-      path: precompiled/
+      path: compiled/
       current_app_name: stratos
-      manifest: precompiled/manifest.yml
+      manifest: compiled/manifest.yml
       show_app_log: true
       vars:
         route: ((staging-cf-route))
@@ -186,7 +209,7 @@ jobs:
   serial: true
   plan:
   - in_parallel:
-    - get: precompiled
+    - get: compiled
       passed: [deploy-staging]
       trigger: true
       params:
@@ -199,9 +222,9 @@ jobs:
       <<: *db-params
   - put: cf-production
     params:
-      path: precompiled/
+      path: compiled/
       current_app_name: stratos
-      manifest: precompiled/manifest.yml
+      manifest: compiled/manifest.yml
       show_app_log: true
       vars:
         route: ((production-cf-route))
@@ -266,17 +289,7 @@ resources:
   icon: github-circle
   source:
     uri: https://github.com/cloud-gov/stratos
-    tag_filter: '4.1.0'
-
-- name: next-stratos-release
-  type: github-release
-  icon: github-circle
-  source:
-    owner: cloud-gov
-    repository: stratos
-    access_token: ((github-access-token))
-    # If you change this, change the one above as well.
-    tag_filter: '^(5\..*)'
+    branch: main
 
 - name: config
   type: git
@@ -342,12 +355,21 @@ resources:
     org: ((production-cf-organization))
     space: ((production-cf-space))
 
-- name: precompiled
+- name: pre-compiled
   type: s3-iam
   icon: database
   source:
     bucket: cg-build-artifacts
-    versioned_file: deploy-stratos/stratos.tgz
+    versioned_file: deploy-stratos/precompiled-stratos.tgz
+    region_name: us-gov-west-1
+    server_side_encryption: AES256
+
+- name: compiled
+  type: s3-iam
+  icon: database
+  source:
+    bucket: cg-build-artifacts
+    versioned_file: deploy-stratos/compiled-stratos.tgz
     region_name: us-gov-west-1
     server_side_encryption: AES256
 
@@ -356,3 +378,4 @@ resources:
   icon: slack
   source:
     url: ((slack-webhook-url))
+
