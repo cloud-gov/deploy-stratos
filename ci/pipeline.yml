@@ -296,7 +296,7 @@ resources:
   icon: github-circle
   source:
     uri: ((github-uri))
-    branch: rg-deploy-stratos
+    branch: ((github-branch))
 
 - name: cf-dev
   type: cf
