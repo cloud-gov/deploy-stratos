@@ -1,20 +1,5 @@
 ---
 jobs:
-- name: new-major-upstream
-  serial: true
-  plan:
-    - get: next-stratos-release
-      trigger: true
-      params:
-        globs: [do-not-download-assets]
-    - put: slack
-      params:
-        text: |
-          :exclamation: A new _major_ version of stratos is available!  Update the pipeline.yml to start deploying it.
-        channel: ((production-slack-channel))
-        username: ((slack-username))
-        icon_url: ((slack-icon-url))
-
 - name: compile-assets
   serial: true
   plan:
@@ -183,8 +168,6 @@ jobs:
       vars:
         route: ((staging-cf-route))
       environment_variables:
-        GO_VERSION: "1.18.3"
-        NODE_VERSION: "15.15"
         SSO_LOGIN: "true"
         SSO_OPTIONS: "nosplash,logout"
         SSO_WHITELIST: "https://((staging-cf-route))/*"
@@ -306,18 +289,7 @@ resources:
   icon: github-circle
   source:
     uri: https://github.com/cloud-gov/stratos
-      #branch: master
-    branch: apb/rollback-stratos
-
-- name: next-stratos-release
-  type: github-release
-  icon: github-circle
-  source:
-    owner: cloud-gov
-    repository: stratos
-    access_token: ((github-access-token))
-    # If you change this, change the one above as well.
-    tag_filter: '^(5\..*)'
+    branch: rg_4.1.0_update
 
 - name: config
   type: git
