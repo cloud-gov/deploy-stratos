@@ -289,7 +289,7 @@ resources:
   icon: github-circle
   source:
     uri: https://github.com/cloud-gov/stratos
-    branch: rg_4.1.0_update
+    branch: main
 
 - name: config
   type: git
