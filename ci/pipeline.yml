@@ -290,6 +290,7 @@ resources:
   source:
     uri: https://github.com/cloud-gov/stratos
     branch: main
+    commit_verification_keys: ((cloud-gov-pgp-keys))
 
 - name: config
   type: git
@@ -297,6 +298,7 @@ resources:
   source:
     uri: ((github-uri))
     branch: ((github-branch))
+    commit_verification_keys: ((cloud-gov-pgp-keys))
 
 - name: cf-dev
   type: cf
