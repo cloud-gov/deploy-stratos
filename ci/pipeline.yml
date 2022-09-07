@@ -293,6 +293,14 @@ resource_types:
       tag: latest
 
 resources:
+  - name: cg-deploy-stratos
+    icon: github-circle
+    type: git
+    source:
+      uri: ((github-uri))
+      branch: ((github-branch))
+      commit_verification_keys: ((cloud-gov-pgp-keys))
+
   - name: stratos-source
     type: git
     icon: github-circle
