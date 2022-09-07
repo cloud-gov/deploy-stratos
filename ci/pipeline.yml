@@ -1,383 +1,391 @@
 ---
 jobs:
-- name: compile-assets
-  serial: true
-  plan:
-  - in_parallel:
-    - get: stratos-source
-      trigger: true
+  - name: set-self
+    plan:
+      - get: cg-deploy-stratos
+        trigger: true
+      - set_pipeline: self
+        file: cg-deploy-stratos/ci/pipeline.yml
+        var_files:
+          - cg-deploy-stratos/ci/config.yml
+
+  - name: compile-assets
+    serial: true
+    plan:
+      - in_parallel:
+          - get: stratos-source
+            trigger: true
+            params:
+              include_source_tarball: true
+          - get: config
+            trigger: true
+      - task: precompile
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: node
+              tag: 16
+          inputs:
+            - name: stratos-source
+            - name: config
+          outputs:
+            - name: pre-compiled
+          params:
+            NG_CLI_ANALYTICS: "false"
+          caches:
+            - path: .npm
+            - path: stratos-source/node_modules
+          run:
+            path: sh
+            args:
+              - -exc
+              - |
+                cd stratos-source
+
+                cp -a ../config/custom_theme ./src/frontend/packages/custom_theme
+                cp ../config/stratos.yaml .
+                npm config set cache $(pwd)/../.npm --global
+                npm install
+                npm run prebuild-ui
+                cp ../config/manifest.yml .
+
+                tar -czf ../pre-compiled/precompiled-stratos.tgz \
+                  --exclude-ignore=.cfignore \
+                  .
+      - put: pre-compiled
+        params:
+          file: pre-compiled/precompiled-stratos.tgz
+
+  - name: compile-stratos
+    serial: true
+    plan:
+      - get: pre-compiled
+        passed: [compile-assets]
+        trigger: true
+        params:
+          unpack: true
+      - task: build-stratos
+        config:
+          inputs:
+            - name: pre-compiled
+          outputs:
+            - name: compiled
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: golang
+              tag: 1.18.3-stretch
+          run:
+            path: /bin/sh
+            args:
+              - -cx
+              - |
+                ls -lah ./pre-compiled
+                apt-get update && apt-get install unzip
+                cd pre-compiled
+                ls -lah 
+                rm -rf dist
+                deploy/cloud-foundry/build.sh
+                tar zcvf compiled-stratos.tgz .
+                mv compiled-stratos.tgz ../compiled/
+
+      - put: compiled
+        params:
+          file: compiled/compiled-stratos.tgz
+
+  - name: deploy-dev
+    serial: true
+    plan:
+      - get: compiled
+        passed: [compile-stratos]
+        trigger: true
+        params:
+          unpack: true
+      - put: create-db
+        resource: cf-cli-dev
+        params: &db-params
+          command: create-service
+          update_service: true
+          # Note, the RDS broker doesn't return the correct status while provisioning:
+          # https://github.com/18F/aws-broker/issues/59
+          # If a new deployment, manually re-trigger the build once the RDS is up.
+          wait_for_service: true
+          timeout: 1200 # RDS take a long time to provision
+          service_instance: stratos-db
+          service: aws-rds
+          plan: medium-psql
+      - put: cf-dev
+        params:
+          path: compiled
+          current_app_name: stratos
+          manifest: compiled/manifest.yml
+          show_app_log: true
+          vars:
+            route: ((dev-cf-route))
+          environment_variables:
+            GO_SHA256: "aaaa70f2fb5a7803"
+            CF_API_URL: ((dev-cf-api-url))
+            SSO_LOGIN: "true"
+            SSO_OPTIONS: "nosplash,logout"
+            SSO_WHITELIST: "https://((dev-cf-route))/*"
+            CF_CLIENT: stratos
+            CF_CLIENT_SECRET: ((dev-cf-client-secret))
+            SESSION_STORE_SECRET: ((dev-session-store-secret))
+    on_failure:
+      put: slack
       params:
-        include_source_tarball: true
-    - get: config
-      trigger: true
-  - task: precompile
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: node
-          tag: 16
-      inputs:
-      - name: stratos-source
-      - name: config
-      outputs:
-      - name: pre-compiled
+        text: |
+          :x: FAILED to deploy Stratos on dev
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: ((dev-slack-channel))
+        username: ((slack-username))
+        icon_url: ((slack-icon-url))
+    on_success:
+      put: slack
       params:
-        NG_CLI_ANALYTICS: "false"
-      caches:
-        - path: .npm
-        - path: stratos-source/node_modules
-      run:
-        path: sh
-        args:
-        - -exc
-        - |
-          cd stratos-source
+        text: |
+          :white_check_mark: Successfully deployed Stratos on dev
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: ((dev-slack-channel))
+        username: ((slack-username))
+        icon_url: ((slack-icon-url))
 
-          cp -a ../config/custom_theme ./src/frontend/packages/custom_theme
-          cp ../config/stratos.yaml .
-          npm config set cache $(pwd)/../.npm --global
-          npm install
-          npm run prebuild-ui
-          cp ../config/manifest.yml .
-
-          tar -czf ../pre-compiled/precompiled-stratos.tgz \
-            --exclude-ignore=.cfignore \
-            .
-  - put: pre-compiled
-    params:
-      file: pre-compiled/precompiled-stratos.tgz
-
-- name: compile-stratos
-  serial: true
-  plan:
-  - get: pre-compiled
-    passed: [compile-assets]
-    trigger: true
-    params: 
-     unpack: true
-  - task: build-stratos
-    config:
-      inputs:
-        - name: pre-compiled
-      outputs:
-        - name: compiled
-      platform: linux
-      image_resource:
-        type: docker-image
-        source: 
-          repository: golang
-          tag: 1.18.3-stretch
-      run:
-        path: /bin/sh
-        args:
-          - -cx
-          - |
-            ls -lah ./pre-compiled
-            apt-get update && apt-get install unzip
-            cd pre-compiled
-            ls -lah 
-            rm -rf dist
-            deploy/cloud-foundry/build.sh
-            tar zcvf compiled-stratos.tgz .
-            mv compiled-stratos.tgz ../compiled/
-
-  - put: compiled
-    params:
-      file: compiled/compiled-stratos.tgz
-
-- name: deploy-dev
-  serial: true
-  plan:
-  - get: compiled
-    passed: [compile-stratos]
-    trigger: true
-    params:
-      unpack: true
-  - put: create-db
-    resource: cf-cli-dev
-    params: &db-params
-      command: create-service
-      update_service: true
-      # Note, the RDS broker doesn't return the correct status while provisioning:
-      # https://github.com/18F/aws-broker/issues/59
-      # If a new deployment, manually re-trigger the build once the RDS is up.
-      wait_for_service: true
-      timeout: 1200  # RDS take a long time to provision
-      service_instance: stratos-db
-      service: aws-rds
-      plan: medium-psql
-  - put: cf-dev
-    params:
-      path: compiled
-      current_app_name: stratos
-      manifest: compiled/manifest.yml
-      show_app_log: true
-      vars:
-        route: ((dev-cf-route))
-      environment_variables:
-        GO_SHA256: "aaaa70f2fb5a7803"
-        CF_API_URL: ((dev-cf-api-url))
-        SSO_LOGIN: "true"
-        SSO_OPTIONS: "nosplash,logout"
-        SSO_WHITELIST: "https://((dev-cf-route))/*"
-        CF_CLIENT: stratos
-        CF_CLIENT_SECRET: ((dev-cf-client-secret))
-        SESSION_STORE_SECRET: ((dev-session-store-secret))
-  on_failure:
-    put: slack
-    params:
-      text: |
-        :x: FAILED to deploy Stratos on dev
-        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: ((dev-slack-channel))
-      username: ((slack-username))
-      icon_url: ((slack-icon-url))
-  on_success:
-    put: slack
-    params:
-      text: |
-        :white_check_mark: Successfully deployed Stratos on dev
-        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: ((dev-slack-channel))
-      username: ((slack-username))
-      icon_url: ((slack-icon-url))
-
-- name: deploy-staging
-  serial: true
-  plan:
-  - in_parallel:
-    - get: compiled
-      passed: [deploy-dev]
-      trigger: true
+  - name: deploy-staging
+    serial: true
+    plan:
+      - in_parallel:
+          - get: compiled
+            passed: [deploy-dev]
+            trigger: true
+            params:
+              unpack: true
+          - get: config
+            trigger: false
+      - put: create-db
+        resource: cf-cli-staging
+        params:
+          <<: *db-params
+      - put: cf-staging
+        params:
+          path: compiled/
+          current_app_name: stratos
+          manifest: compiled/manifest.yml
+          show_app_log: true
+          vars:
+            route: ((staging-cf-route))
+          environment_variables:
+            SSO_LOGIN: "true"
+            SSO_OPTIONS: "nosplash,logout"
+            SSO_WHITELIST: "https://((staging-cf-route))/*"
+            CF_CLIENT: stratos
+            CF_CLIENT_SECRET: ((staging-cf-client-secret))
+            SESSION_STORE_SECRET: ((staging-session-store-secret))
+      - put: cf-staging
+        # This can eventually be removed, once we're sure nobody is linking to
+        # dashboard-beta.
+        params:
+          path: config/redirects
+          manifest: config/redirects/manifest.yml
+          current_app_name: dashboard-beta-redirects
+          vars:
+            external-route: dashboard-beta.fr-stage.cloud.gov
+            app-route: dashboard-beta.apps.fr-stage.cloud.gov
+            deprecated-route: dashboard-deprecated.fr-stage.cloud.gov
+            redirect-url: dashboard.fr-stage.cloud.gov
+    on_failure:
+      put: slack
       params:
-        unpack: true
-    - get: config
-      trigger: false
-  - put: create-db
-    resource: cf-cli-staging
-    params:
-      <<: *db-params
-  - put: cf-staging
-    params:
-      path: compiled/
-      current_app_name: stratos
-      manifest: compiled/manifest.yml
-      show_app_log: true
-      vars:
-        route: ((staging-cf-route))
-      environment_variables:
-        SSO_LOGIN: "true"
-        SSO_OPTIONS: "nosplash,logout"
-        SSO_WHITELIST: "https://((staging-cf-route))/*"
-        CF_CLIENT: stratos
-        CF_CLIENT_SECRET: ((staging-cf-client-secret))
-        SESSION_STORE_SECRET: ((staging-session-store-secret))
-  - put: cf-staging
-    # This can eventually be removed, once we're sure nobody is linking to
-    # dashboard-beta.
-    params:
-      path: config/redirects
-      manifest: config/redirects/manifest.yml
-      current_app_name: dashboard-beta-redirects
-      vars:
-        external-route: dashboard-beta.fr-stage.cloud.gov
-        app-route: dashboard-beta.apps.fr-stage.cloud.gov
-        deprecated-route: dashboard-deprecated.fr-stage.cloud.gov
-        redirect-url: dashboard.fr-stage.cloud.gov
-  on_failure:
-    put: slack
-    params:
-      text: |
-        :x: FAILED to deploy Stratos on staging
-        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: ((staging-slack-channel))
-      username: ((slack-username))
-      icon_url: ((slack-icon-url))
-  on_success:
-    put: slack
-    params:
-      text: |
-        :white_check_mark: Successfully deployed Stratos on staging
-        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: ((staging-slack-channel))
-      username: ((slack-username))
-      icon_url: ((slack-icon-url))
-
-- name: deploy-production
-  serial: true
-  plan:
-  - in_parallel:
-    - get: compiled
-      passed: [deploy-staging]
-      trigger: true
+        text: |
+          :x: FAILED to deploy Stratos on staging
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: ((staging-slack-channel))
+        username: ((slack-username))
+        icon_url: ((slack-icon-url))
+    on_success:
+      put: slack
       params:
-        unpack: true
-    - get: config
-      trigger: false
-  - put: create-db
-    resource: cf-cli-production
-    params:
-      <<: *db-params
-  - put: cf-production
-    params:
-      path: compiled/
-      current_app_name: stratos
-      manifest: compiled/manifest.yml
-      show_app_log: true
-      vars:
-        route: ((production-cf-route))
-      environment_variables:
-        SSO_LOGIN: "true"
-        SSO_OPTIONS: "nosplash,logout"
-        SSO_WHITELIST: "https://((production-cf-route))/*"
-        CF_CLIENT: stratos
-        CF_CLIENT_SECRET: ((production-cf-client-secret))
-        SESSION_STORE_SECRET: ((production-session-store-secret))
-  - put: cf-production
-    # This can eventually be removed, once we're sure nobody is linking to
-    # dashboard-beta.
-    params:
-      path: config/redirects
-      manifest: config/redirects/manifest.yml
-      current_app_name: dashboard-beta-redirects
-      vars:
-        external-route: dashboard-beta.fr.cloud.gov
-        app-route: dashboard-beta.app.cloud.gov
-        deprecated-route: dashboard-deprecated.fr.cloud.gov
-        redirect-url: dashboard.fr.cloud.gov
-  on_failure:
-    put: slack
-    params:
-      text: |
-        :x: FAILED to deploy Stratos on production
-        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: ((production-slack-channel))
-      username: ((slack-username))
-      icon_url: ((slack-icon-url))
-  on_success:
-    put: slack
-    params:
-      text: |
-        :white_check_mark: Successfully deployed Stratos on production
-        <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-      channel: ((production-slack-channel))
-      username: ((slack-username))
-      icon_url: ((slack-icon-url))
+        text: |
+          :white_check_mark: Successfully deployed Stratos on staging
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: ((staging-slack-channel))
+        username: ((slack-username))
+        icon_url: ((slack-icon-url))
+
+  - name: deploy-production
+    serial: true
+    plan:
+      - in_parallel:
+          - get: compiled
+            passed: [deploy-staging]
+            trigger: true
+            params:
+              unpack: true
+          - get: config
+            trigger: false
+      - put: create-db
+        resource: cf-cli-production
+        params:
+          <<: *db-params
+      - put: cf-production
+        params:
+          path: compiled/
+          current_app_name: stratos
+          manifest: compiled/manifest.yml
+          show_app_log: true
+          vars:
+            route: ((production-cf-route))
+          environment_variables:
+            SSO_LOGIN: "true"
+            SSO_OPTIONS: "nosplash,logout"
+            SSO_WHITELIST: "https://((production-cf-route))/*"
+            CF_CLIENT: stratos
+            CF_CLIENT_SECRET: ((production-cf-client-secret))
+            SESSION_STORE_SECRET: ((production-session-store-secret))
+      - put: cf-production
+        # This can eventually be removed, once we're sure nobody is linking to
+        # dashboard-beta.
+        params:
+          path: config/redirects
+          manifest: config/redirects/manifest.yml
+          current_app_name: dashboard-beta-redirects
+          vars:
+            external-route: dashboard-beta.fr.cloud.gov
+            app-route: dashboard-beta.app.cloud.gov
+            deprecated-route: dashboard-deprecated.fr.cloud.gov
+            redirect-url: dashboard.fr.cloud.gov
+    on_failure:
+      put: slack
+      params:
+        text: |
+          :x: FAILED to deploy Stratos on production
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: ((production-slack-channel))
+        username: ((slack-username))
+        icon_url: ((slack-icon-url))
+    on_success:
+      put: slack
+      params:
+        text: |
+          :white_check_mark: Successfully deployed Stratos on production
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: ((production-slack-channel))
+        username: ((slack-username))
+        icon_url: ((slack-icon-url))
 
 resource_types:
-- name: slack-notification
-  type: docker-image
-  source:
-    repository: cfcommunity/slack-notification-resource
+  - name: slack-notification
+    type: docker-image
+    source:
+      repository: cfcommunity/slack-notification-resource
 
-- name: s3-iam
-  type: docker-image
-  source:
-    repository: 18fgsa/s3-resource
+  - name: s3-iam
+    type: docker-image
+    source:
+      repository: 18fgsa/s3-resource
 
-- name: cf-cli-resource
-  type: docker-image
-  source:
-    repository: nulldriver/cf-cli-resource
-    tag: latest
+  - name: cf-cli-resource
+    type: docker-image
+    source:
+      repository: nulldriver/cf-cli-resource
+      tag: latest
 
 resources:
-- name: stratos-source
-  type: git
-  icon: github-circle
-  source:
-    uri: https://github.com/cloud-gov/stratos
-    branch: main
-    commit_verification_keys: ((cloud-gov-pgp-keys))
+  - name: stratos-source
+    type: git
+    icon: github-circle
+    source:
+      uri: https://github.com/cloud-gov/stratos
+      branch: main
+      commit_verification_keys: ((cloud-gov-pgp-keys))
 
-- name: config
-  type: git
-  icon: github-circle
-  source:
-    uri: ((github-uri))
-    branch: ((github-branch))
-    commit_verification_keys: ((cloud-gov-pgp-keys))
+  - name: config
+    type: git
+    icon: github-circle
+    source:
+      uri: ((github-uri))
+      branch: ((github-branch))
+      commit_verification_keys: ((cloud-gov-pgp-keys))
 
-- name: cf-dev
-  type: cf
-  icon: cloud-upload
-  source:
-    api: ((dev-cf-api-url))
-    username: ((dev-cf-username))
-    password: ((dev-cf-password))
-    organization: ((dev-cf-organization))
-    space: ((dev-cf-space))
+  - name: cf-dev
+    type: cf
+    icon: cloud-upload
+    source:
+      api: ((dev-cf-api-url))
+      username: ((dev-cf-username))
+      password: ((dev-cf-password))
+      organization: ((dev-cf-organization))
+      space: ((dev-cf-space))
 
-- name: cf-staging
-  type: cf
-  icon: cloud-upload
-  source:
-    api: ((staging-cf-api-url))
-    username: ((staging-cf-username))
-    password: ((staging-cf-password))
-    organization: ((staging-cf-organization))
-    space: ((staging-cf-space))
+  - name: cf-staging
+    type: cf
+    icon: cloud-upload
+    source:
+      api: ((staging-cf-api-url))
+      username: ((staging-cf-username))
+      password: ((staging-cf-password))
+      organization: ((staging-cf-organization))
+      space: ((staging-cf-space))
 
-- name: cf-production
-  type: cf
-  icon: cloud-upload
-  source:
-    api: ((production-cf-api-url))
-    username: ((production-cf-username))
-    password: ((production-cf-password))
-    organization: ((production-cf-organization))
-    space: ((production-cf-space))
+  - name: cf-production
+    type: cf
+    icon: cloud-upload
+    source:
+      api: ((production-cf-api-url))
+      username: ((production-cf-username))
+      password: ((production-cf-password))
+      organization: ((production-cf-organization))
+      space: ((production-cf-space))
 
-- name: cf-cli-dev
-  type: cf-cli-resource
-  source:
-    api: ((dev-cf-api-url))
-    username: ((dev-cf-username))
-    password: ((dev-cf-password))
-    org: ((dev-cf-organization))
-    space: ((dev-cf-space))
+  - name: cf-cli-dev
+    type: cf-cli-resource
+    source:
+      api: ((dev-cf-api-url))
+      username: ((dev-cf-username))
+      password: ((dev-cf-password))
+      org: ((dev-cf-organization))
+      space: ((dev-cf-space))
 
-- name: cf-cli-staging
-  type: cf-cli-resource
-  source:
-    api: ((staging-cf-api-url))
-    username: ((staging-cf-username))
-    password: ((staging-cf-password))
-    org: ((staging-cf-organization))
-    space: ((staging-cf-space))
+  - name: cf-cli-staging
+    type: cf-cli-resource
+    source:
+      api: ((staging-cf-api-url))
+      username: ((staging-cf-username))
+      password: ((staging-cf-password))
+      org: ((staging-cf-organization))
+      space: ((staging-cf-space))
 
-- name: cf-cli-production
-  type: cf-cli-resource
-  source:
-    api: ((production-cf-api-url))
-    username: ((production-cf-username))
-    password: ((production-cf-password))
-    org: ((production-cf-organization))
-    space: ((production-cf-space))
+  - name: cf-cli-production
+    type: cf-cli-resource
+    source:
+      api: ((production-cf-api-url))
+      username: ((production-cf-username))
+      password: ((production-cf-password))
+      org: ((production-cf-organization))
+      space: ((production-cf-space))
 
-- name: pre-compiled
-  type: s3-iam
-  icon: database
-  source:
-    bucket: cg-build-artifacts
-    versioned_file: deploy-stratos/precompiled-stratos.tgz
-    region_name: us-gov-west-1
-    server_side_encryption: AES256
+  - name: pre-compiled
+    type: s3-iam
+    icon: database
+    source:
+      bucket: cg-build-artifacts
+      versioned_file: deploy-stratos/precompiled-stratos.tgz
+      region_name: us-gov-west-1
+      server_side_encryption: AES256
 
-- name: compiled
-  type: s3-iam
-  icon: database
-  source:
-    bucket: cg-build-artifacts
-    versioned_file: deploy-stratos/compiled-stratos.tgz
-    region_name: us-gov-west-1
-    server_side_encryption: AES256
+  - name: compiled
+    type: s3-iam
+    icon: database
+    source:
+      bucket: cg-build-artifacts
+      versioned_file: deploy-stratos/compiled-stratos.tgz
+      region_name: us-gov-west-1
+      server_side_encryption: AES256
 
-- name: slack
-  type: slack-notification
-  icon: slack
-  source:
-    url: ((slack-webhook-url))
-
+  - name: slack
+    type: slack-notification
+    icon: slack
+    source:
+      url: ((slack-webhook-url))
