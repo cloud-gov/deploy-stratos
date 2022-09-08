@@ -294,6 +294,14 @@ resource_types:
       tag: latest
 
 resources:
+  - name: stratos-source
+    type: git
+    icon: github-circle
+    source:
+      uri: https://github.com/cloud-gov/stratos
+      branch: main
+      commit_verification_keys: ((cloud-gov-pgp-keys))
+
   - name: config
     type: git
     icon: github-circle
