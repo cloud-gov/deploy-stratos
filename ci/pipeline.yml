@@ -5,9 +5,9 @@ jobs:
       - get: config
         trigger: true
       - set_pipeline: self
-        file: cg-deploy-stratos/ci/pipeline.yml
+        file: config/ci/pipeline.yml
         var_files:
-          - cg-deploy-stratos/ci/config.yml
+          - config/ci/config.yml
 
   - name: compile-assets
     serial: true
