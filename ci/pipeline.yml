@@ -164,7 +164,6 @@ jobs:
             params:
               unpack: true
           - get: config
-            passed: [set-self]
             trigger: false
       - put: create-db
         resource: cf-cli-staging
@@ -226,7 +225,6 @@ jobs:
             params:
               unpack: true
           - get: config
-            passed: [set-self]
             trigger: false
       - put: create-db
         resource: cf-cli-production
