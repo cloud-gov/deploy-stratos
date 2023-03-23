@@ -24,10 +24,13 @@ jobs:
         config:
           platform: linux
           image_resource:
-            type: docker-image
+            type: registry-image
             source:
-              repository: node
-              tag: 16
+              repository: harden-concourse-task
+              aws_access_key_id: ((ecr_aws_key))
+              aws_secret_access_key: ((ecr_aws_secret))
+              aws_region: us-gov-west-1
+              tag: ((harden-concourse-task-tag))
           inputs:
             - name: stratos-source
             - name: config
@@ -75,10 +78,13 @@ jobs:
             - name: compiled
           platform: linux
           image_resource:
-            type: docker-image
+            type: registry-image
             source:
-              repository: golang
-              tag: 1.18.3-stretch
+              repository: harden-concourse-task
+              aws_access_key_id: ((ecr_aws_key))
+              aws_secret_access_key: ((ecr_aws_secret))
+              aws_region: us-gov-west-1
+              tag: ((harden-concourse-task-tag))
           run:
             path: /bin/sh
             args:
