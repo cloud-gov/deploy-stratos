@@ -61,6 +61,16 @@ jobs:
       - put: pre-compiled
         params:
           file: pre-compiled/precompiled-stratos.tgz
+          config:
+            platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              aws_access_key_id: ((ecr_aws_key))
+              aws_secret_access_key: ((ecr_aws_secret))
+              repository: harden-concourse-task
+              aws_region: us-gov-west-1
+              tag: ((harden-concourse-task-tag))
 
   - name: compile-stratos
     serial: true
@@ -102,6 +112,16 @@ jobs:
       - put: compiled
         params:
           file: compiled/compiled-stratos.tgz
+          config:
+            platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              aws_access_key_id: ((ecr_aws_key))
+              aws_secret_access_key: ((ecr_aws_secret))
+              repository: harden-concourse-task
+              aws_region: us-gov-west-1
+              tag: ((harden-concourse-task-tag))
 
   - name: deploy-dev
     serial: true
