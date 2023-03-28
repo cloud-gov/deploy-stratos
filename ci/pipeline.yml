@@ -52,6 +52,7 @@ jobs:
                 cp ../config/stratos.yaml .
                 npm config set cache $(pwd)/../.npm --global
                 npm install
+                npm run dev-setup && npm run build-devkit && npm run clean-symlinks && npm run store-git-metadata && npm run prepare-backend
                 npm run prebuild-ui
                 cp ../config/manifest.yml .
 
