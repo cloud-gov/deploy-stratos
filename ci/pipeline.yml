@@ -164,6 +164,7 @@ jobs:
           show_app_log: true
           vars:
             route: ((dev-cf-route))
+            service_instance: stratos-db-mboyd-test
           environment_variables:
             GO_SHA256: "aaaa70f2fb5a7803"
             CF_API_URL: ((dev-cf-api-url))
@@ -226,6 +227,7 @@ jobs:
           show_app_log: true
           vars:
             route: ((staging-cf-route))
+            service_instance: stratos-db
           environment_variables:
             SSO_LOGIN: "true"
             SSO_OPTIONS: "nosplash,logout"
@@ -308,6 +310,7 @@ jobs:
           show_app_log: true
           vars:
             route: ((production-cf-route))
+            service_instance: stratos-db
           environment_variables:
             SSO_LOGIN: "true"
             SSO_OPTIONS: "nosplash,logout"
