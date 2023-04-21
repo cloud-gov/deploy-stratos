@@ -143,7 +143,7 @@ jobs:
           # If a new deployment, manually re-trigger the build once the RDS is up.
           wait_for_service: true
           timeout: 1200 # RDS take a long time to provision
-          service_instance: stratos-db
+          service_instance: stratos-db-mboyd-test
           service: aws-rds
           plan: medium-psql
       - put: cf-dev
@@ -207,6 +207,7 @@ jobs:
         resource: cf-cli-staging
         params:
           <<: *db-params
+          service_instance: stratos-db
       - put: cf-staging
         params:
           config:
@@ -288,6 +289,7 @@ jobs:
         resource: cf-cli-production
         params:
           <<: *db-params
+          service_instance: stratos-db
       - put: cf-production
         params:
           config:
