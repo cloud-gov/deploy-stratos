@@ -104,8 +104,9 @@ jobs:
                 ls -lah ./pre-compiled
                 apt-get update && apt-get install unzip
                 cd pre-compiled
-                ls -lah 
+                ls -lah
                 rm -rf dist
+                export CGO_ENABLED=0
                 deploy/cloud-foundry/build.sh
                 tar zcvf compiled-stratos.tgz .
                 mv compiled-stratos.tgz ../compiled/
