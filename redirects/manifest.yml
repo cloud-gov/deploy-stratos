@@ -9,6 +9,6 @@ applications:
   - route: ((external-route))
   - route: ((app-route))
   - route: ((deprecated-route))
-  stack: cflinuxfs3
+  stack: cflinuxfs4
   env:
     REDIRECT_URL: ((redirect-url))
