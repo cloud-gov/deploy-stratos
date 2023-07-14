@@ -30,7 +30,7 @@ jobs:
               aws_access_key_id: ((ecr_aws_key))
               aws_secret_access_key: ((ecr_aws_secret))
               aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
+              semver_constraint: ">= 1.0.0"
           inputs:
             - name: stratos-source
             - name: config
@@ -71,7 +71,7 @@ jobs:
               aws_secret_access_key: ((ecr_aws_secret))
               repository: harden-concourse-task
               aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
+              semver_constraint: ">= 1.0.0"
 
   - name: compile-stratos
     serial: true
@@ -95,7 +95,7 @@ jobs:
               aws_access_key_id: ((ecr_aws_key))
               aws_secret_access_key: ((ecr_aws_secret))
               aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
+              semver_constraint: ">= 1.0.0"
           run:
             path: /bin/sh
             args:
@@ -122,7 +122,7 @@ jobs:
               aws_secret_access_key: ((ecr_aws_secret))
               repository: harden-concourse-task
               aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
+              semver_constraint: ">= 1.0.0"
 
   - name: deploy-dev
     serial: true
@@ -156,7 +156,7 @@ jobs:
               aws_secret_access_key: ((ecr_aws_secret))
               repository: harden-concourse-task
               aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
+              semver_constraint: ">= 1.0.0"
           path: compiled
           current_app_name: stratos
           manifest: compiled/manifest.yml
@@ -217,7 +217,7 @@ jobs:
               aws_secret_access_key: ((ecr_aws_secret))
               repository: harden-concourse-task
               aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
+              semver_constraint: ">= 1.0.0"
           path: compiled/
           current_app_name: stratos
           manifest: compiled/manifest.yml
@@ -244,7 +244,7 @@ jobs:
               aws_secret_access_key: ((ecr_aws_secret))
               repository: harden-concourse-task
               aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
+              semver_constraint: ">= 1.0.0"
           path: config/redirects
           manifest: config/redirects/manifest.yml
           current_app_name: dashboard-beta-redirects
@@ -298,7 +298,7 @@ jobs:
               aws_secret_access_key: ((ecr_aws_secret))
               repository: harden-concourse-task
               aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
+              semver_constraint: ">= 1.0.0"
           path: compiled/
           current_app_name: stratos
           manifest: compiled/manifest.yml
@@ -325,7 +325,7 @@ jobs:
               aws_secret_access_key: ((ecr_aws_secret))
               repository: harden-concourse-task
               aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
+              semver_constraint: ">= 1.0.0"
           path: config/redirects
           manifest: config/redirects/manifest.yml
           current_app_name: dashboard-beta-redirects
