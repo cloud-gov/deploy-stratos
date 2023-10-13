@@ -21,16 +21,8 @@ jobs:
             passed: [set-self]
             trigger: true
       - task: precompile
+        image: general-task
         config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source:
-              repository: harden-concourse-task
-              aws_access_key_id: ((ecr_aws_key))
-              aws_secret_access_key: ((ecr_aws_secret))
-              aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
           inputs:
             - name: stratos-source
             - name: config
@@ -62,17 +54,8 @@ jobs:
       - put: pre-compiled
         params:
           file: pre-compiled/precompiled-stratos.tgz
+          image: general-task
           config:
-            platform: linux
-          image_resource:
-            type: registry-image
-            source:
-              aws_access_key_id: ((ecr_aws_key))
-              aws_secret_access_key: ((ecr_aws_secret))
-              repository: harden-concourse-task
-              aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
-
   - name: compile-stratos
     serial: true
     plan:
@@ -82,20 +65,12 @@ jobs:
         params:
           unpack: true
       - task: build-stratos
+        image: general-task
         config:
           inputs:
             - name: pre-compiled
           outputs:
             - name: compiled
-          platform: linux
-          image_resource:
-            type: registry-image
-            source:
-              repository: harden-concourse-task
-              aws_access_key_id: ((ecr_aws_key))
-              aws_secret_access_key: ((ecr_aws_secret))
-              aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
           run:
             path: /bin/sh
             args:
@@ -113,16 +88,8 @@ jobs:
       - put: compiled
         params:
           file: compiled/compiled-stratos.tgz
+          image: general-task
           config:
-            platform: linux
-          image_resource:
-            type: registry-image
-            source:
-              aws_access_key_id: ((ecr_aws_key))
-              aws_secret_access_key: ((ecr_aws_secret))
-              repository: harden-concourse-task
-              aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
 
   - name: deploy-dev
     serial: true
@@ -147,16 +114,8 @@ jobs:
           plan: medium-psql
       - put: cf-dev
         params:
+          image: general-task
           config:
-            platform: linux
-          image_resource:
-            type: registry-image
-            source:
-              aws_access_key_id: ((ecr_aws_key))
-              aws_secret_access_key: ((ecr_aws_secret))
-              repository: harden-concourse-task
-              aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
           path: compiled
           current_app_name: stratos
           manifest: compiled/manifest.yml
@@ -208,16 +167,8 @@ jobs:
           <<: *db-params
       - put: cf-staging
         params:
+          image: general-task
           config:
-            platform: linux
-          image_resource:
-            type: registry-image
-            source:
-              aws_access_key_id: ((ecr_aws_key))
-              aws_secret_access_key: ((ecr_aws_secret))
-              repository: harden-concourse-task
-              aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
           path: compiled/
           current_app_name: stratos
           manifest: compiled/manifest.yml
@@ -235,16 +186,8 @@ jobs:
         # This can eventually be removed, once we're sure nobody is linking to
         # dashboard-beta.
         params:
+          image: general-task
           config:
-            platform: linux
-          image_resource:
-            type: registry-image
-            source:
-              aws_access_key_id: ((ecr_aws_key))
-              aws_secret_access_key: ((ecr_aws_secret))
-              repository: harden-concourse-task
-              aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
           path: config/redirects
           manifest: config/redirects/manifest.yml
           current_app_name: dashboard-beta-redirects
@@ -289,16 +232,8 @@ jobs:
           <<: *db-params
       - put: cf-production
         params:
+          image: general-task
           config:
-            platform: linux
-          image_resource:
-            type: registry-image
-            source:
-              aws_access_key_id: ((ecr_aws_key))
-              aws_secret_access_key: ((ecr_aws_secret))
-              repository: harden-concourse-task
-              aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
           path: compiled/
           current_app_name: stratos
           manifest: compiled/manifest.yml
@@ -316,16 +251,8 @@ jobs:
         # This can eventually be removed, once we're sure nobody is linking to
         # dashboard-beta.
         params:
+          image: general-task
           config:
-            platform: linux
-          image_resource:
-            type: registry-image
-            source:
-              aws_access_key_id: ((ecr_aws_key))
-              aws_secret_access_key: ((ecr_aws_secret))
-              repository: harden-concourse-task
-              aws_region: us-gov-west-1
-              tag: ((harden-concourse-task-tag))
           path: config/redirects
           manifest: config/redirects/manifest.yml
           current_app_name: dashboard-beta-redirects
@@ -399,7 +326,25 @@ resource_types:
     aws_region: us-gov-west-1
     tag: latest
 
+- name: general-task
+  type: registry-image
+  source:
+    aws_access_key_id: ((ecr_aws_key))
+    aws_secret_access_key: ((ecr_aws_secret))
+    repository: general-task
+    aws_region: us-gov-west-1
+    tag: latest
+
 resources:
+  - name: registry-image
+    type: registry-image
+    source:
+    aws_access_key_id: ((ecr_aws_key))
+    aws_secret_access_key: ((ecr_aws_secret))
+    repository: registry-image-resource
+    aws_region: us-gov-west-1
+    tag: latest
+
   - name: stratos-source
     type: git
     icon: github-circle
