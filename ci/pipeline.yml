@@ -40,6 +40,8 @@ jobs:
               - |
                 cd stratos-source
 
+                export NODE_OPTIONS=--openssl-legacy-provider
+
                 cp -a ../config/custom_theme ./src/frontend/packages/custom_theme
                 cp ../config/stratos.yaml .
                 npm config set cache $(pwd)/../.npm --global
