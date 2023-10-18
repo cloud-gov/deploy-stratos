@@ -6,23 +6,23 @@ jobs:
         trigger: true
       - set_pipeline: self
         file: config/ci/pipeline.yml
-        var_files:
-          - config/ci/config.yml
 
   - name: compile-assets
     serial: true
     plan:
       - in_parallel:
-          - get: stratos-source
-            trigger: true
-            params:
-              include_source_tarball: true
-          - get: config
-            passed: [set-self]
-            trigger: true
+        - get: stratos-source
+          trigger: true
+          params:
+            include_source_tarball: true
+        - get: config
+          passed: [set-self]
+          trigger: true
+        - get: general-task
       - task: precompile
         image: general-task
         config:
+          platform: linux
           inputs:
             - name: stratos-source
             - name: config
@@ -52,20 +52,22 @@ jobs:
                   --exclude-ignore=.cfignore \
                   .
       - put: pre-compiled
-        image: general-task
         params:
           file: pre-compiled/precompiled-stratos.tgz
   - name: compile-stratos
     serial: true
     plan:
-      - get: pre-compiled
-        passed: [compile-assets]
-        trigger: true
-        params:
-          unpack: true
+      - in_parallel:
+        - get: pre-compiled
+          passed: [compile-assets]
+          trigger: true
+          params:
+            unpack: true
+        - get: general-task
       - task: build-stratos
         image: general-task
         config:
+          platform: linux
           inputs:
             - name: pre-compiled
           outputs:
@@ -78,24 +80,25 @@ jobs:
                 ls -lah ./pre-compiled
                 apt-get update && apt-get install unzip
                 cd pre-compiled
-                ls -lah 
+                ls -lah
                 rm -rf dist
                 deploy/cloud-foundry/build.sh
                 tar zcvf compiled-stratos.tgz .
                 mv compiled-stratos.tgz ../compiled/
 
       - put: compiled
-        image: general-task
         params:
           file: compiled/compiled-stratos.tgz
   - name: deploy-dev
     serial: true
     plan:
-      - get: compiled
-        passed: [compile-stratos]
-        trigger: true
-        params:
-          unpack: true
+      - in_parallel:
+        - get: compiled
+          passed: [compile-stratos]
+          trigger: true
+          params:
+            unpack: true
+        - get: general-task
       - put: create-db
         resource: cf-cli-dev
         params: &db-params
@@ -110,7 +113,6 @@ jobs:
           service: aws-rds
           plan: medium-psql
       - put: cf-dev
-        image: general-task
         params:
           path: compiled
           current_app_name: stratos
@@ -150,19 +152,19 @@ jobs:
     serial: true
     plan:
       - in_parallel:
-          - get: compiled
-            passed: [deploy-dev]
-            trigger: true
-            params:
-              unpack: true
-          - get: config
-            trigger: false
+        - get: compiled
+          passed: [deploy-dev]
+          trigger: true
+          params:
+            unpack: true
+        - get: config
+          trigger: false
+        - get: general-task
       - put: create-db
         resource: cf-cli-staging
         params:
           <<: *db-params
       - put: cf-staging
-        image: general-task
         params:
           path: compiled/
           current_app_name: stratos
@@ -180,7 +182,6 @@ jobs:
       - put: cf-staging
         # This can eventually be removed, once we're sure nobody is linking to
         # dashboard-beta.
-        image: general-task
         params:
           path: config/redirects
           manifest: config/redirects/manifest.yml
@@ -213,19 +214,19 @@ jobs:
     serial: true
     plan:
       - in_parallel:
-          - get: compiled
-            passed: [deploy-staging]
-            trigger: true
-            params:
-              unpack: true
-          - get: config
-            trigger: false
+        - get: compiled
+          passed: [deploy-staging]
+          trigger: true
+          params:
+            unpack: true
+        - get: config
+          trigger: false
+        - get: general-task
       - put: create-db
         resource: cf-cli-production
         params:
           <<: *db-params
       - put: cf-production
-        image: general-task
         params:
           path: compiled/
           current_app_name: stratos
@@ -243,7 +244,6 @@ jobs:
       - put: cf-production
         # This can eventually be removed, once we're sure nobody is linking to
         # dashboard-beta.
-        image: general-task
         params:
           path: config/redirects
           manifest: config/redirects/manifest.yml
@@ -273,6 +273,15 @@ jobs:
         icon_url: ((slack-icon-url))
 
 resource_types:
+- name: registry-image
+  type: registry-image
+  source:
+    aws_access_key_id: ((ecr_aws_key))
+    aws_secret_access_key: ((ecr_aws_secret))
+    repository: registry-image-resource
+    aws_region: us-gov-west-1
+    tag: latest
+  
 - name: cf-cli-resource
   type: registry-image
   source:
@@ -318,25 +327,7 @@ resource_types:
     aws_region: us-gov-west-1
     tag: latest
 
-- name: general-task
-  type: registry-image
-  source:
-    aws_access_key_id: ((ecr_aws_key))
-    aws_secret_access_key: ((ecr_aws_secret))
-    repository: general-task
-    aws_region: us-gov-west-1
-    tag: latest
-
 resources:
-  - name: registry-image
-    type: registry-image
-    source:
-    aws_access_key_id: ((ecr_aws_key))
-    aws_secret_access_key: ((ecr_aws_secret))
-    repository: registry-image-resource
-    aws_region: us-gov-west-1
-    tag: latest
-
   - name: stratos-source
     type: git
     icon: github-circle
@@ -349,8 +340,8 @@ resources:
     type: git
     icon: github-circle
     source:
-      uri: ((github-uri))
-      branch: ((github-branch))
+      uri: https://github.com/cloud-gov/cg-deploy-stratos.git
+      branch: main
       commit_verification_keys: ((cloud-gov-pgp-keys))
 
   - name: cf-dev
@@ -433,3 +424,12 @@ resources:
     icon: slack
     source:
       url: ((slack-webhook-url))
+
+  - name: general-task
+    type: registry-image
+    source:
+      aws_access_key_id: ((ecr_aws_key))
+      aws_secret_access_key: ((ecr_aws_secret))
+      repository: general-task
+      aws_region: us-gov-west-1
+      tag: latest
