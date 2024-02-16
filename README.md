@@ -1,4 +1,4 @@
-# cg-deploy-stratos
+# cg-deploy-stratos 
 
 This is part of [cloud.gov](https://cloud.gov/), deployment pipeline for
 [Stratos Console](https://github.com/cloudfoundry/stratos).
