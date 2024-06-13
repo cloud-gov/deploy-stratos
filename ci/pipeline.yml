@@ -36,7 +36,7 @@ jobs:
           run:
             path: sh
             args:
-              - -exc
+              - -ilexc
               - |
                 cd stratos-source
 
@@ -283,7 +283,7 @@ resource_types:
     repository: registry-image-resource
     aws_region: us-gov-west-1
     tag: latest
-  
+
 - name: cf-cli-resource
   type: registry-image
   source:
