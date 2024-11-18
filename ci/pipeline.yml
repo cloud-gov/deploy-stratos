@@ -182,6 +182,7 @@ jobs:
             CF_CLIENT: stratos
             CF_CLIENT_SECRET: ((staging-cf-client-secret))
             SESSION_STORE_SECRET: ((staging-session-store-secret))
+            DB_SSL_MODE: "verify-ca" 
       - put: cf-staging
         # This can eventually be removed, once we're sure nobody is linking to
         # dashboard-beta.
@@ -244,6 +245,7 @@ jobs:
             CF_CLIENT: stratos
             CF_CLIENT_SECRET: ((production-cf-client-secret))
             SESSION_STORE_SECRET: ((production-session-store-secret))
+            DB_SSL_MODE: "verify-ca" 
       - put: cf-production
         # This can eventually be removed, once we're sure nobody is linking to
         # dashboard-beta.
