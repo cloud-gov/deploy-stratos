@@ -131,6 +131,7 @@ jobs:
             CF_CLIENT: stratos
             CF_CLIENT_SECRET: ((dev-cf-client-secret))
             SESSION_STORE_SECRET: ((dev-session-store-secret))
+            DB_SSL_MODE: "verify-ca" 
     on_failure:
       put: slack
       params:
