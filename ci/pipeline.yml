@@ -131,21 +131,12 @@ jobs:
             CF_CLIENT: stratos
             CF_CLIENT_SECRET: ((dev-cf-client-secret))
             SESSION_STORE_SECRET: ((dev-session-store-secret))
-            DB_SSL_MODE: "verify-ca" 
+            DB_SSL_MODE: "verify-ca"
     on_failure:
       put: slack
       params:
         text: |
           :x: FAILED to deploy Stratos on dev
-          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: ((dev-slack-channel))
-        username: ((slack-username))
-        icon_url: ((slack-icon-url))
-    on_success:
-      put: slack
-      params:
-        text: |
-          :white_check_mark: Successfully deployed Stratos on dev
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
         channel: ((dev-slack-channel))
         username: ((slack-username))
@@ -182,7 +173,7 @@ jobs:
             CF_CLIENT: stratos
             CF_CLIENT_SECRET: ((staging-cf-client-secret))
             SESSION_STORE_SECRET: ((staging-session-store-secret))
-            DB_SSL_MODE: "verify-ca" 
+            DB_SSL_MODE: "verify-ca"
       - put: cf-staging
         # This can eventually be removed, once we're sure nobody is linking to
         # dashboard-beta.
@@ -200,15 +191,6 @@ jobs:
       params:
         text: |
           :x: FAILED to deploy Stratos on staging
-          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: ((staging-slack-channel))
-        username: ((slack-username))
-        icon_url: ((slack-icon-url))
-    on_success:
-      put: slack
-      params:
-        text: |
-          :white_check_mark: Successfully deployed Stratos on staging
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
         channel: ((staging-slack-channel))
         username: ((slack-username))
@@ -245,7 +227,7 @@ jobs:
             CF_CLIENT: stratos
             CF_CLIENT_SECRET: ((production-cf-client-secret))
             SESSION_STORE_SECRET: ((production-session-store-secret))
-            DB_SSL_MODE: "verify-ca" 
+            DB_SSL_MODE: "verify-ca"
       - put: cf-production
         # This can eventually be removed, once we're sure nobody is linking to
         # dashboard-beta.
@@ -263,15 +245,6 @@ jobs:
       params:
         text: |
           :x: FAILED to deploy Stratos on production
-          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: ((production-slack-channel))
-        username: ((slack-username))
-        icon_url: ((slack-icon-url))
-    on_success:
-      put: slack
-      params:
-        text: |
-          :white_check_mark: Successfully deployed Stratos on production
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
         channel: ((production-slack-channel))
         username: ((slack-username))
