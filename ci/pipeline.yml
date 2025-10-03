@@ -13,8 +13,6 @@ jobs:
       - in_parallel:
         - get: stratos-source
           trigger: true
-          params:
-            include_source_tarball: true
         - get: config
           passed: [set-self]
           trigger: true
