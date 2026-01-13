@@ -349,7 +349,7 @@ resources:
       password: ((production-cf-password))
       organization: ((production-cf-organization))
       space: ((production-cf-space))
-      cf-cli-version: 8
+      cf_cli_version: 8
 
   - name: cf-cli-dev
     type: cf-cli-resource
@@ -359,7 +359,7 @@ resources:
       password: ((dev-cf-password))
       org: ((dev-cf-organization))
       space: ((dev-cf-space))
-      cf-cli-version: 8
+      cf_cli_version: 8
 
   - name: cf-cli-staging
     type: cf-cli-resource
@@ -369,7 +369,7 @@ resources:
       password: ((staging-cf-password))
       org: ((staging-cf-organization))
       space: ((staging-cf-space))
-      cf-cli-version: 8
+      cf_cli_version: 8
 
   - name: cf-cli-production
     type: cf-cli-resource
