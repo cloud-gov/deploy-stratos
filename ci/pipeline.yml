@@ -317,7 +317,7 @@ jobs:
             CF_API_URL: ((dev-cf-api-url))
             SSO_LOGIN: "true"
             SSO_OPTIONS: "nosplash,logout"
-            SSO_WHITELIST: "https://dashboard-v3.dev.us-gov-west-1.aws-us-gov.cloud.gov/*"
+            SSO_WHITELIST: "https://((dev-v3-cf-route))/*"
             CF_CLIENT: stratos-v3
             CF_CLIENT_SECRET: ((dev-cf-client-secret))
             SESSION_STORE_SECRET: ((dev-session-store-secret))
