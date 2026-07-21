@@ -4,8 +4,8 @@ jobs:
     plan:
       - get: config
         trigger: true
-      - set_pipeline: self
-        file: config/ci/pipeline.yml
+#      - set_pipeline: self
+#        file: config/ci/pipeline.yml
 
   - name: compile-assets
     serial: true
@@ -139,6 +139,173 @@ jobs:
         channel: ((dev-slack-channel))
         username: ((slack-username))
         icon_url: ((slack-icon-url))
+
+  # ══════════════════════════════════════════════════════════════
+  # stratos-v3 — dev-only, CF API v3 compatible build & deploy.
+  # Fully independent of the existing stratos flow. These jobs are
+  # leaf jobs: they do NOT feed staging or production.
+  # ══════════════════════════════════════════════════════════════
+  - name: compile-stratos-v3
+    serial: true
+    plan:
+      - in_parallel:
+          - get: stratos-v3-source
+            trigger: false
+          - get: config
+          - get: general-task
+      - task: build-stratos-v3
+        image: general-task
+        config:
+          platform: linux
+          inputs:
+            - name: stratos-v3-source
+            - name: config
+          outputs:
+            - name: compiled-v3
+          params:
+            NG_CLI_ANALYTICS: "false"
+            # develop-branch toolchain requirements (see .tool-versions)
+            GO_VERSION: "1.26.5"
+            NODE_VERSION: "26.2.0"
+            BUN_VERSION: "1.3.14"
+          run:
+            path: /bin/bash
+            args:
+              - -exc
+              - |
+                # NOTE: this task requires outbound network egress to
+                # go.dev/dl, nodejs.org (via nvm), bun.sh and the npm
+                # registry to install the v5 build toolchain and deps.
+
+                # -- zip (required by build/release-cf.sh to package the CF zip) --
+                if ! command -v zip >/dev/null 2>&1; then
+                  apt-get update && apt-get install -y zip
+                fi
+
+                cd stratos-v3-source
+
+                # -- Apply dev-only stratos-v3 customizations (from config repo) --
+                # 1. stratos.yaml drives packages.exclude (removes the
+                #    Workloads/Kubernetes/Helm nav items) and is read by the
+                #    build's extension-generator + index-transformer.
+                # 2. company-config.json is the 5.x runtime branding config
+                #    (served at /assets/company-config.json): app name, colors,
+                #    login page, footer. It replaces the theme package default.
+                # 3. Branding assets (logo, nav-logo, favicon) overlay the
+                #    stock core assets referenced by company-config.json.
+                cp ../config/stratos-v3.yaml ./stratos.yaml
+                cp ../config/custom-v3/company-config.json \
+                  src/frontend/packages/theme/company-config.json
+                cp ../config/custom-v3/assets/core/logo.png \
+                  src/frontend/packages/core/assets/logo.png
+                cp ../config/custom-v3/assets/core/nav-logo.png \
+                  src/frontend/packages/core/assets/nav-logo.png
+                # favicon.ico location varies across branches; overlay wherever
+                # a stock one exists so the build picks up the branded icon.
+                for f in \
+                  src/frontend/packages/core/favicon.ico \
+                  src/frontend/packages/core/src/favicon.ico; do
+                  if [ -f "$f" ]; then
+                    cp ../config/custom-v3/assets/favicon.ico "$f"
+                  fi
+                done
+
+                ARCH="$(uname -m)"
+                case "$ARCH" in
+                  x86_64) GOARCH=amd64 ;;
+                  aarch64|arm64) GOARCH=arm64 ;;
+                  *) echo "unsupported arch: $ARCH" >&2; exit 1 ;;
+                esac
+
+                # -- Go --
+                curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${GOARCH}.tar.gz" -o /tmp/go.tgz
+                rm -rf /usr/local/go
+                tar -C /usr/local -xzf /tmp/go.tgz
+                export PATH="/usr/local/go/bin:${PATH}"
+                export GOPATH="${PWD}/../gopath"
+                export PATH="${GOPATH}/bin:${PATH}"
+                go version
+
+                # -- Node (via nvm) --
+                export NVM_DIR="${PWD}/../.nvm"
+                mkdir -p "$NVM_DIR"
+                curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+                . "$NVM_DIR/nvm.sh"
+                nvm install "${NODE_VERSION}"
+                nvm use "${NODE_VERSION}"
+                node --version
+
+                # -- Bun --
+                export BUN_INSTALL="${PWD}/../.bun"
+                curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}"
+                export PATH="${BUN_INSTALL}/bin:${PATH}"
+                bun --version
+
+                # -- Build + package CF zip --
+                # The Makefile evaluates `npx tsc --version` at parse time
+                # (version.mk). With no node_modules and no TTY, npx blocks
+                # forever on an install confirmation prompt. Populate deps
+                # first with `bun install` so tsc resolves locally, and set
+                # npm_config_yes so npx never prompts. Then build via make.
+                export npm_config_yes=true
+                export CI=true
+                timeout 1800 bun install
+                timeout 1800 make build release cf
+
+                # release-cf.sh emits dist/stratos-cf-<version>.zip
+                ls -lah dist/
+                cp dist/stratos-cf-*.zip ../compiled-v3/
+                cd ../compiled-v3
+                ls -lah
+      - put: compiled-v3
+        params:
+          file: compiled-v3/stratos-cf-*.zip
+
+  - name: deploy-stratos-v3-dev
+    serial: true
+    plan:
+      - in_parallel:
+          - get: compiled-v3
+            passed: [compile-stratos-v3]
+            trigger: true
+          - get: config
+            trigger: false
+          - get: general-task
+      - put: cf-dev
+        params:
+          # Point -p at the CF zip artifact itself (like `cf push -p <zip>`),
+          # not the containing directory. CF extracts the zip so ./jetstream
+          # lands at the app root. Pushing the directory instead leaves the
+          # zip nested and the start command fails with:
+          #   ./jetstream: No such file or directory (exit 127)
+          # The s3 resource stores under versioned_file, so the downloaded
+          # file is named stratos-cf-v3.zip regardless of the built filename.
+          path: compiled-v3/stratos-cf-v3.zip
+          current_app_name: stratos-v3
+          manifest: config/manifest-v3.yml
+          show_app_log: true
+          vars:
+            route: dashboard-v3.dev.us-gov-west-1.aws-us-gov.cloud.gov
+          environment_variables:
+            GO_SHA256: "aaaa70f2fb5a7803"
+            CF_API_URL: ((dev-cf-api-url))
+            SSO_LOGIN: "true"
+            SSO_OPTIONS: "nosplash,logout"
+            SSO_WHITELIST: "https://dashboard-v3.dev.us-gov-west-1.aws-us-gov.cloud.gov/*"
+            CF_CLIENT: stratos-v3
+            CF_CLIENT_SECRET: ((dev-cf-client-secret))
+            SESSION_STORE_SECRET: ((dev-session-store-secret))
+            DB_SSL_MODE: "verify-ca"
+            LOG_LEVEL: "debug"
+#    on_failure:
+#      put: slack
+#      params:
+#        text: |
+#          :x: FAILED to deploy Stratos v3 on dev
+#          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+#        channel: ((dev-slack-channel))
+#        username: ((slack-username))
+#        icon_url: ((slack-icon-url))
 
   - name: deploy-staging
     serial: true
@@ -317,7 +484,7 @@ resources:
     icon: github-circle
     source:
       uri: https://github.com/cloud-gov/cg-deploy-stratos.git
-      branch: main
+      branch: v3
       commit_verification_keys: ((cloud-gov-pgp-keys))
 
   - name: cf-dev
@@ -395,6 +562,36 @@ resources:
     source:
       bucket: cg-build-artifacts
       versioned_file: deploy-stratos/compiled-stratos.tgz
+      region_name: us-gov-west-1
+      server_side_encryption: AES256
+
+  # -- stratos-v3 (dev-only, CF API v3 compatible) --
+  # Independent source. Kept separate from `stratos-source` so the
+  # existing dev/staging/prod flow is untouched.
+  #
+  # Pinned-tag version (disabled -- kept for reference / easy rollback):
+  # - name: stratos-v3-source
+  #   type: git
+  #   icon: github-circle
+  #   source:
+  #     uri: https://github.com/cloudfoundry/stratos
+  #     tag_filter: v5.0.0-dev.8
+  - name: stratos-v3-source
+    type: git
+    icon: github-circle
+    source:
+      uri: https://github.com/cloudfoundry/stratos
+      branch: develop
+
+  - name: compiled-v3
+    type: s3-iam
+    icon: database
+    source:
+      bucket: cg-build-artifacts
+      # Stored as .zip because the artifact is the CF-pushable zip produced
+      # by build/release-cf.sh (not a tgz). The stored object always takes
+      # this name, so the deploy job globs it as stratos-cf-v3.zip.
+      versioned_file: deploy-stratos/stratos-cf-v3.zip
       region_name: us-gov-west-1
       server_side_encryption: AES256
 
