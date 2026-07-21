@@ -150,7 +150,7 @@ jobs:
     plan:
       - in_parallel:
           - get: stratos-v3-source
-            trigger: false
+            trigger: true
           - get: config
           - get: general-task
       - task: build-stratos-v3
