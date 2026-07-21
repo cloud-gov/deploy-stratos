@@ -209,6 +209,11 @@ jobs:
                     cp ../config/custom-v3/assets/favicon.ico "$f"
                   fi
                 done
+                # 4. Patch the login page for legacy "nosplash" behaviour:
+                #    auto-redirect straight to UAA instead of pausing on a
+                #    page with a Sign In button. Script is idempotent and
+                #    fails the build if its anchor drifts upstream.
+                bash ../config/custom-v3/apply-nosplash-autologin.sh .
 
                 ARCH="$(uname -m)"
                 case "$ARCH" in
@@ -250,6 +255,27 @@ jobs:
                 export npm_config_yes=true
                 export CI=true
                 timeout 1800 bun install
+
+                # -- Regenerate custom-import.module.ts from our stratos.yaml --
+                # The app imports ./custom-import.module (NO underscore):
+                #   app.module.ts   -> CustomImportModule
+                #   app.routing.ts  -> CustomRoutingImportModule
+                # The build's extension-generator writes _custom-import.module.ts
+                # (WITH underscore); the old webpack build swapped one for the
+                # other via a module-replacement plugin, but the new esbuild
+                # `application` builder does not, so the committed
+                # custom-import.module.ts (which still imports Kubernetes) is
+                # what actually gets bundled. Regenerate BOTH names from our
+                # packages.exclude so @stratosui/kubernetes (Workloads/
+                # Kubernetes/Helm) is really dropped. Run after bun install so
+                # node_modules/deps for the generator are present.
+                node build/extension-generator.mjs \
+                  --output src/frontend/packages/core/src/custom-import.module.ts
+                node build/extension-generator.mjs \
+                  --output src/frontend/packages/core/src/_custom-import.module.ts
+                echo "---- generated custom-import.module.ts ----"
+                cat src/frontend/packages/core/src/custom-import.module.ts
+
                 timeout 1800 make build release cf
 
                 # release-cf.sh emits dist/stratos-cf-<version>.zip
