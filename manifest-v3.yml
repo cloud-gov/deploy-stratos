@@ -1,0 +1,16 @@
+---
+# Dev-only deployment manifest for the v3-compatible Stratos (stratos-v3).
+# Secrets and SSO settings are injected by the Concourse pipeline via the
+# cf-dev put's `environment_variables` — do NOT add secrets to this file.
+applications:
+  - name: stratos-v3
+    routes:
+      - route: ((route))
+    memory: 512M
+    disk_quota: 512M
+    timeout: 180
+    buildpacks:
+      - binary_buildpack
+    health-check-type: port
+    instances: 1
+    command: ./jetstream
