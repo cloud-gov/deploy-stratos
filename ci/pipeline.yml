@@ -210,8 +210,8 @@ jobs:
                   fi
                 done
                 # NOTE: the legacy "nosplash" login auto-redirect is now built
-                # into the branch source (PR #5678), so the previous
-                # apply-nosplash-autologin.sh overlay step has been removed.
+                # into the upstream source (cloudfoundry/stratos PR #5678), so
+                # no login-page overlay/patch step is needed here.
 
                 ARCH="$(uname -m)"
                 case "$ARCH" in
@@ -324,7 +324,7 @@ jobs:
             # Opt into the built-in Content-Security-Policy (CONSOLE_CSP) to
             # validate the CSP-header change on dev. Use "default" for the
             # built-in policy, or a full policy string to override.
-            CONSOLE_CSP: "default"
+            # CONSOLE_CSP: false
 #    on_failure:
 #      put: slack
 #      params:
