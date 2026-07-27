@@ -14,3 +14,9 @@ applications:
     health-check-type: port
     instances: 1
     command: ./jetstream
+    # Bind the shared Postgres DB so persistence features are enabled. Without
+    # a bound DB the app falls back to SQLite, which reports
+    # disablePersistenceFeatures=true and silently breaks the Home and
+    # Endpoints nav (see cloud-gov/private#3023, #3024).
+    services:
+      - stratos-db

@@ -209,11 +209,9 @@ jobs:
                     cp ../config/custom-v3/assets/favicon.ico "$f"
                   fi
                 done
-                # 4. Patch the login page for legacy "nosplash" behaviour:
-                #    auto-redirect straight to UAA instead of pausing on a
-                #    page with a Sign In button. Script is idempotent and
-                #    fails the build if its anchor drifts upstream.
-                bash ../config/custom-v3/apply-nosplash-autologin.sh .
+                # NOTE: the legacy "nosplash" login auto-redirect is now built
+                # into the branch source (PR #5678), so the previous
+                # apply-nosplash-autologin.sh overlay step has been removed.
 
                 ARCH="$(uname -m)"
                 case "$ARCH" in
@@ -323,6 +321,10 @@ jobs:
             SESSION_STORE_SECRET: ((dev-session-store-secret))
             DB_SSL_MODE: "verify-ca"
             LOG_LEVEL: "debug"
+            # Opt into the built-in Content-Security-Policy (CONSOLE_CSP) to
+            # validate the CSP-header change on dev. Use "default" for the
+            # built-in policy, or a full policy string to override.
+            CONSOLE_CSP: "default"
 #    on_failure:
 #      put: slack
 #      params:
@@ -595,19 +597,12 @@ resources:
   # Independent source. Kept separate from `stratos-source` so the
   # existing dev/staging/prod flow is untouched.
   #
-  # Pinned-tag version (disabled -- kept for reference / easy rollback):
-  # - name: stratos-v3-source
-  #   type: git
-  #   icon: github-circle
-  #   source:
-  #     uri: https://github.com/cloudfoundry/stratos
-  #     tag_filter: v5.0.0-dev.8
   - name: stratos-v3-source
     type: git
     icon: github-circle
     source:
       uri: https://github.com/cloudfoundry/stratos
-      branch: develop
+      branch: develop #develop #fix/nosplash-unauthenticated-autologin
 
   - name: compiled-v3
     type: s3-iam
