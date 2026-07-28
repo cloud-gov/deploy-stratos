@@ -123,7 +123,6 @@ jobs:
             instances: "3"
             route: ((dev-cf-route))
           environment_variables:
-            GO_SHA256: "aaaa70f2fb5a7803"
             CF_API_URL: ((dev-cf-api-url))
             SSO_LOGIN: "true"
             SSO_OPTIONS: "nosplash,logout"
@@ -313,7 +312,6 @@ jobs:
             instances: "3"
             route: ((dev-v3-cf-route))
           environment_variables:
-            GO_SHA256: "aaaa70f2fb5a7803"
             CF_API_URL: ((dev-cf-api-url))
             SSO_LOGIN: "true"
             SSO_OPTIONS: "nosplash,logout"
