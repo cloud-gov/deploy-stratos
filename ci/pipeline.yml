@@ -120,7 +120,7 @@ jobs:
           show_app_log: true
           vars:
             name: stratos
-            instances: 3
+            instances: "3"
             route: ((dev-cf-route))
           environment_variables:
             GO_SHA256: "aaaa70f2fb5a7803"
@@ -154,6 +154,7 @@ jobs:
           - get: stratos-v3-source
             trigger: true
           - get: config
+            trigger: true
           - get: general-task
       - task: build-stratos-v3
         image: general-task
@@ -301,11 +302,6 @@ jobs:
           - get: general-task
       - put: cf-dev
         params:
-          # Point -p at the CF zip artifact itself (like `cf push -p <zip>`),
-          # not the containing directory. CF extracts the zip so ./jetstream
-          # lands at the app root. Pushing the directory instead leaves the
-          # zip nested and the start command fails with:
-          #   ./jetstream: No such file or directory (exit 127)
           # The s3 resource stores under versioned_file, so the downloaded
           # file is named stratos-cf-v3.zip regardless of the built filename.
           path: compiled-v3/stratos-cf-v3.zip
@@ -314,8 +310,8 @@ jobs:
           show_app_log: true
           vars:
             name: stratos-v3
-            instances: 1
-            route: dashboard-v3.dev.us-gov-west-1.aws-us-gov.cloud.gov
+            instances: "3"
+            route: ((dev-v3-cf-route))
           environment_variables:
             GO_SHA256: "aaaa70f2fb5a7803"
             CF_API_URL: ((dev-cf-api-url))
@@ -365,7 +361,7 @@ jobs:
           show_app_log: true
           vars:
             name: stratos
-            instances: 3
+            instances: "3"
             route: ((staging-cf-route))
           environment_variables:
             SSO_LOGIN: "true"
@@ -421,7 +417,7 @@ jobs:
           show_app_log: true
           vars:
             name: stratos
-            instances: 3
+            instances: "3"
             route: ((production-cf-route))
           environment_variables:
             SSO_LOGIN: "true"

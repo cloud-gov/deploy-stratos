@@ -86,6 +86,64 @@ e.g., `stratos-{myinitials}.app.cloud.gov`.
 - Once your changes are done, switch over to the directory for this
   repository, and commit your changes to GitHub
 
+## Theming the v3 (CAPI v3 / Stratos 5.x) build
+
+The `stratos-v3` deployment is themed entirely through files in the
+[`custom-v3/`](custom-v3/) folder — no changes to the upstream Stratos source
+are required. The CI pipeline merges these files into the Stratos build tree
+during the `compile-stratos-v3` job (see [`ci/pipeline.yml`](ci/pipeline.yml)).
+
+### What lives in `custom-v3/`
+
+```
+custom-v3/
+├── company-config.json          # all branding: colors, fonts, styles, names
+└── assets/
+    ├── core/
+    │   ├── logo.png             # main logo
+    │   └── nav-logo.png         # left-nav logo
+    └── favicon.ico              # browser tab icon
+```
+
+### `company-config.json`
+
+This is the Stratos 5.x runtime branding config. It configures **all of the
+colors, fonts, and styles**, plus the app/company name, login page, navigation,
+layout, and footer. It is served at `/assets/company-config.json` and applied
+by the theme package at runtime (it replaces the theme package's default
+`company-config.json`). Top-level sections:
+
+| Section        | Configures                                             |
+|----------------|--------------------------------------------------------|
+| `company`      | Company / application name and display name            |
+| `theme`        | Brand colors (primary/secondary/accent, etc.)          |
+| `navigation`   | Left-nav colors and styling                            |
+| `layout`       | Page background/text and header colors                 |
+| `login`        | Login page title/subtitle, logo, background            |
+| `footer`       | Footer text / copyright                                |
+| `logos`        | Paths to the logo / nav-logo / favicon assets          |
+| `defaults`     | Default UI preferences (theme mode, sidenav, etc.)     |
+
+Because branding is data-driven here, most look-and-feel changes are just edits
+to `company-config.json` — no rebuild logic changes needed.
+
+### How the files are merged in the pipeline
+
+During `compile-stratos-v3`, before the frontend build, the pipeline copies the
+`custom-v3/` files into the checked-out Stratos source:
+
+- `custom-v3/company-config.json` → `src/frontend/packages/theme/company-config.json`
+- `custom-v3/assets/core/logo.png` → `src/frontend/packages/core/assets/logo.png`
+- `custom-v3/assets/core/nav-logo.png` → `src/frontend/packages/core/assets/nav-logo.png`
+- `custom-v3/assets/favicon.ico` → the core package's `favicon.ico`
+
+The build then bakes these into the compiled bundle that gets pushed to
+Cloud Foundry. Build-time settings such as the browser tab `title` and the
+`packages.exclude` list live separately in [`stratos.yaml`](stratos.yaml).
+
+To change the theme: edit the files in `custom-v3/`, commit, and re-run the
+pipeline (`compile-stratos-v3` → `deploy-stratos-v3-dev`).
+
 ## Contributing
 
 See [CONTRIBUTING](CONTRIBUTING.md) for additional information.
