@@ -186,14 +186,16 @@ jobs:
 
                 # -- Apply dev-only stratos-v3 customizations (from config repo) --
                 # 1. stratos.yaml drives packages.exclude (removes the
-                #    Workloads/Kubernetes/Helm nav items) and is read by the
-                #    build's extension-generator + index-transformer.
+                #    Workloads/Kubernetes/Helm nav items) and the build-time
+                #    title; read by the build's extension-generator +
+                #    index-transformer. This is the same shared stratos.yaml
+                #    used by the 4.x flow (no separate stratos-v3.yaml).
                 # 2. company-config.json is the 5.x runtime branding config
                 #    (served at /assets/company-config.json): app name, colors,
                 #    login page, footer. It replaces the theme package default.
                 # 3. Branding assets (logo, nav-logo, favicon) overlay the
                 #    stock core assets referenced by company-config.json.
-                cp ../config/stratos-v3.yaml ./stratos.yaml
+                cp ../config/stratos.yaml ./stratos.yaml
                 cp ../config/custom-v3/company-config.json \
                   src/frontend/packages/theme/company-config.json
                 cp ../config/custom-v3/assets/core/logo.png \
