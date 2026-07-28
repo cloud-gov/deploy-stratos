@@ -119,6 +119,8 @@ jobs:
           manifest: compiled/manifest.yml
           show_app_log: true
           vars:
+            name: stratos
+            instances: 3
             route: ((dev-cf-route))
           environment_variables:
             GO_SHA256: "aaaa70f2fb5a7803"
@@ -308,9 +310,11 @@ jobs:
           # file is named stratos-cf-v3.zip regardless of the built filename.
           path: compiled-v3/stratos-cf-v3.zip
           current_app_name: stratos-v3
-          manifest: config/manifest-v3.yml
+          manifest: config/manifest.yml
           show_app_log: true
           vars:
+            name: stratos-v3
+            instances: 1
             route: dashboard-v3.dev.us-gov-west-1.aws-us-gov.cloud.gov
           environment_variables:
             GO_SHA256: "aaaa70f2fb5a7803"
@@ -360,6 +364,8 @@ jobs:
           manifest: compiled/manifest.yml
           show_app_log: true
           vars:
+            name: stratos
+            instances: 3
             route: ((staging-cf-route))
           environment_variables:
             SSO_LOGIN: "true"
@@ -414,6 +420,8 @@ jobs:
           manifest: compiled/manifest.yml
           show_app_log: true
           vars:
+            name: stratos
+            instances: 3
             route: ((production-cf-route))
           environment_variables:
             SSO_LOGIN: "true"
