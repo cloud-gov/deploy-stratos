@@ -321,10 +321,28 @@ jobs:
             SESSION_STORE_SECRET: ((dev-session-store-secret))
             DB_SSL_MODE: "verify-ca"
             LOG_LEVEL: "debug"
-            # Opt into the built-in Content-Security-Policy (CONSOLE_CSP) to
-            # validate the CSP-header change on dev. Use "default" for the
-            # built-in policy, or a full policy string to override.
-            # CONSOLE_CSP: false
+            # Content-Security-Policy. The built-in "default" policy uses
+            # connect-src 'self', which blocks the deploy wizard's direct
+            # browser calls to the git SCM APIs (GitHub/GitLab) — those are
+            # cross-origin XHR/fetch, not proxied. Supply a full policy that
+            # mirrors the built-in default but also allows the SCM hosts:
+            #   connect-src (XHR): api.github.com, workshop.cloud.gov (our
+            #     GitLab), gitlab.com (public GitLab)
+            #   img-src (avatars/logos): avatars.githubusercontent.com (repo/
+            #     org avatars), secure.gravatar.com (user gravatars), plus the
+            #     SCM hosts
+            # Set CONSOLE_CSP=off to disable the header entirely.
+            CONSOLE_CSP: >-
+              default-src 'self';
+              script-src 'self';
+              style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+              font-src 'self' data: https://fonts.gstatic.com;
+              img-src 'self' data: https://api.github.com https://avatars.githubusercontent.com https://workshop.cloud.gov https://gitlab.com https://secure.gravatar.com;
+              connect-src 'self' https://api.github.com https://workshop.cloud.gov https://gitlab.com;
+              worker-src 'self' blob:;
+              frame-ancestors 'self';
+              base-uri 'self';
+              form-action 'self'
 #    on_failure:
 #      put: slack
 #      params:
@@ -601,12 +619,19 @@ resources:
   # Independent source. Kept separate from `stratos-source` so the
   # existing dev/staging/prod flow is untouched.
   #
+  # Temporarily building the GitLab deploy fix branch
+  # (fix/gitlab-scm-access-token) to validate private / self-hosted GitLab
+  # (workshop.cloud.gov) deploys before opening the upstream PR. Switch back to
+  # `develop` once that work merges. `develop` already carries the GitHub
+  # Source Config / private-repo / token-revalidate fixes (PR #5707, merged
+  # 2026-07-28, merge commit da65b4ad); this branch is develop + the GitLab
+  # token/base-URL fix on top.
   - name: stratos-v3-source
     type: git
     icon: github-circle
     source:
       uri: https://github.com/cloudfoundry/stratos
-      branch: develop #develop #fix/nosplash-unauthenticated-autologin
+      branch: fix/gitlab-scm-access-token #develop (switch back after GitLab PR merges)
 
   - name: compiled-v3
     type: s3-iam
