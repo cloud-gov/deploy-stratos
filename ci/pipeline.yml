@@ -321,6 +321,7 @@ jobs:
             SESSION_STORE_SECRET: ((dev-session-store-secret))
             DB_SSL_MODE: "verify-ca"
             LOG_LEVEL: "debug"
+            ENCRYPTION_KEY: ((dev-db-encryption-key))
             # Content-Security-Policy. The built-in "default" policy uses
             # connect-src 'self', which blocks the deploy wizard's direct
             # browser calls to the git SCM APIs (GitHub/GitLab) — those are
@@ -615,23 +616,20 @@ resources:
       region_name: us-gov-west-1
       server_side_encryption: AES256
 
-  # -- stratos-v3 (dev-only, CF API v3 compatible) --
-  # Independent source. Kept separate from `stratos-source` so the
-  # existing dev/staging/prod flow is untouched.
-  #
-  # Temporarily building the GitLab deploy fix branch
-  # (fix/gitlab-scm-access-token) to validate private / self-hosted GitLab
-  # (workshop.cloud.gov) deploys before opening the upstream PR. Switch back to
-  # `develop` once that work merges. `develop` already carries the GitHub
-  # Source Config / private-repo / token-revalidate fixes (PR #5707, merged
-  # 2026-07-28, merge commit da65b4ad); this branch is develop + the GitLab
-  # token/base-URL fix on top.
+   # Testing PR #5728 (norm/fix/v2-disabled-capability-probe — probe fix) with
+   # additional fixes on top:
+   #   - fix(cfapppush): always use CC v3 API version for CLI minimum-version
+   #     checks (needed even when probe is fixed, since a v2-enabled foundation
+   #     returns "2.289.0" which is < CLI's MinVersionCNB "3.168.0")
+   #   - fix(sessiondata): reference http_sessions not sessions in cleanup query
+   # Once PR #5728 merges into develop, repoint to develop (cfapppush +
+   # sessiondata fixes will also need their own upstream PRs before that).
   - name: stratos-v3-source
     type: git
     icon: github-circle
     source:
       uri: https://github.com/cloudfoundry/stratos
-      branch: fix/gitlab-scm-access-token #develop (switch back after GitLab PR merges)
+      branch: test/pr-5728-with-fixes
 
   - name: compiled-v3
     type: s3-iam
