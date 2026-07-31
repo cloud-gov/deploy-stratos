@@ -10,5 +10,5 @@ applications:
     health-check-type: port
     instances: ((instances))
     services:
-    - stratos-db-version5
+    - ((db_service))
     command: ./jetstream

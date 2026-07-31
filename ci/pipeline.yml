@@ -7,166 +7,164 @@ jobs:
 #      - set_pipeline: self
 #        file: config/ci/pipeline.yml
 
-  - name: compile-assets
-    serial: true
-    plan:
-      - in_parallel:
-          - get: stratos-source
-            trigger: true
-          - get: config
-            passed: [set-self]
-            trigger: true
-          - get: general-task
-      - task: precompile
-        image: general-task
-        config:
-          platform: linux
-          inputs:
-            - name: stratos-source
-            - name: config
-          outputs:
-            - name: pre-compiled
-          params:
-            NG_CLI_ANALYTICS: "false"
-          caches:
-            - path: .npm
-            - path: stratos-source/node_modules
-          run:
-            path: sh
-            args:
-              - -ilexc
-              - |
-                cd stratos-source
+# ── 4.x compile jobs commented out — no longer needed with v5 pipeline ────────
+#  - name: compile-assets
+#    serial: true
+#    plan:
+#      - in_parallel:
+#          - get: stratos-source
+#            trigger: true
+#          - get: config
+#            passed: [set-self]
+#            trigger: true
+#          - get: general-task
+#      - task: precompile
+#        image: general-task
+#        config:
+#          platform: linux
+#          inputs:
+#            - name: stratos-source
+#            - name: config
+#          outputs:
+#            - name: pre-compiled
+#          params:
+#            NG_CLI_ANALYTICS: "false"
+#          caches:
+#            - path: .npm
+#            - path: stratos-source/node_modules
+#          run:
+#            path: sh
+#            args:
+#              - -ilexc
+#              - |
+#                cd stratos-source
+#                export NODE_OPTIONS=--openssl-legacy-provider
+#                cp -a ../config/custom_theme ./src/frontend/packages/custom_theme
+#                cp ../config/stratos.yaml .
+#                npm config set cache $(pwd)/../.npm --global
+#                npm install
+#                npm run dev-setup && npm run build-devkit && npm run clean-symlinks && npm run store-git-metadata && npm run prepare-backend
+#                npm run prebuild-ui
+#                cp ../config/manifest.yml .
+#                tar -czf ../pre-compiled/precompiled-stratos.tgz \
+#                  --exclude-ignore=.cfignore \
+#                  .
+#      - put: pre-compiled
+#        params:
+#          file: pre-compiled/precompiled-stratos.tgz
 
-                export NODE_OPTIONS=--openssl-legacy-provider
+#  - name: compile-stratos
+#    serial: true
+#    plan:
+#      - in_parallel:
+#          - get: pre-compiled
+#            passed: [compile-assets]
+#            trigger: true
+#            params:
+#              unpack: true
+#          - get: general-task
+#      - task: build-stratos
+#        image: general-task
+#        config:
+#          platform: linux
+#          inputs:
+#            - name: pre-compiled
+#          outputs:
+#            - name: compiled
+#          run:
+#            path: /bin/sh
+#            args:
+#              - -cx
+#              - |
+#                ls -lah ./pre-compiled
+#                apt-get update && apt-get install unzip
+#                cd pre-compiled
+#                ls -lah
+#                rm -rf dist
+#                deploy/cloud-foundry/build.sh
+#                tar zcvf compiled-stratos.tgz .
+#                mv compiled-stratos.tgz ../compiled/
+#      - put: compiled
+#        params:
+#          file: compiled/compiled-stratos.tgz
 
-                cp -a ../config/custom_theme ./src/frontend/packages/custom_theme
-                cp ../config/stratos.yaml .
-                npm config set cache $(pwd)/../.npm --global
-                npm install
-                npm run dev-setup && npm run build-devkit && npm run clean-symlinks && npm run store-git-metadata && npm run prepare-backend
-                npm run prebuild-ui
-                cp ../config/manifest.yml .
-
-                tar -czf ../pre-compiled/precompiled-stratos.tgz \
-                  --exclude-ignore=.cfignore \
-                  .
-      - put: pre-compiled
-        params:
-          file: pre-compiled/precompiled-stratos.tgz
-  - name: compile-stratos
-    serial: true
-    plan:
-      - in_parallel:
-          - get: pre-compiled
-            passed: [compile-assets]
-            trigger: true
-            params:
-              unpack: true
-          - get: general-task
-      - task: build-stratos
-        image: general-task
-        config:
-          platform: linux
-          inputs:
-            - name: pre-compiled
-          outputs:
-            - name: compiled
-          run:
-            path: /bin/sh
-            args:
-              - -cx
-              - |
-                ls -lah ./pre-compiled
-                apt-get update && apt-get install unzip
-                cd pre-compiled
-                ls -lah
-                rm -rf dist
-                deploy/cloud-foundry/build.sh
-                tar zcvf compiled-stratos.tgz .
-                mv compiled-stratos.tgz ../compiled/
-
-      - put: compiled
-        params:
-          file: compiled/compiled-stratos.tgz
-  - name: deploy-dev
-    serial: true
-    plan:
-      - in_parallel:
-          - get: compiled
-            passed: [compile-stratos]
-            trigger: true
-            params:
-              unpack: true
-          - get: general-task
-      - put: create-db
-        resource: cf-cli-dev
-        params: &db-params
-          command: create-service
-          update_service: true
-          # Note, the RDS broker doesn't return the correct status while provisioning:
-          # https://github.com/18F/aws-broker/issues/59
-          # If a new deployment, manually re-trigger the build once the RDS is up.
-          wait_for_service: true
-          timeout: 1200 # RDS take a long time to provision
-          service_instance: stratos-db
-          service: aws-rds
-          plan: medium-psql
-      - put: cf-dev
-        params:
-          path: compiled
-          current_app_name: stratos
-          manifest: compiled/manifest.yml
-          show_app_log: true
-          vars:
-            name: stratos
-            instances: "3"
-            route: ((dev-cf-route))
-          environment_variables:
-            CF_API_URL: ((dev-cf-api-url))
-            SSO_LOGIN: "true"
-            SSO_OPTIONS: "nosplash,logout"
-            SSO_WHITELIST: "https://((dev-cf-route))/*"
-            CF_CLIENT: stratos
-            CF_CLIENT_SECRET: ((dev-cf-client-secret))
-            SESSION_STORE_SECRET: ((dev-session-store-secret))
-            DB_SSL_MODE: "verify-ca"
-    on_failure:
-      put: slack
-      params:
-        text: |
-          :x: FAILED to deploy Stratos on dev
-          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-        channel: ((dev-slack-channel))
-        username: ((slack-username))
-        icon_url: ((slack-icon-url))
+# ── 4.x deploy jobs commented out — replaced by 5.x jobs below ──────────────
+#  - name: deploy-dev
+#    serial: true
+#    plan:
+#      - in_parallel:
+#          - get: compiled
+#            passed: [compile-stratos]
+#            trigger: true
+#            params:
+#              unpack: true
+#          - get: general-task
+#      - put: create-db
+#        resource: cf-cli-dev
+#        params: &db-params
+#          command: create-service
+#          update_service: true
+#          wait_for_service: true
+#          timeout: 1200
+#          service_instance: stratos-db
+#          service: aws-rds
+#          plan: medium-psql
+#      - put: cf-dev
+#        params:
+#          path: compiled
+#          current_app_name: stratos
+#          manifest: compiled/manifest.yml
+#          show_app_log: true
+#          vars:
+#            name: stratos
+#            instances: "3"
+#            route: ((dev-cf-route))
+#            db_service: stratos-db
+#          environment_variables:
+#            CF_API_URL: ((dev-cf-api-url))
+#            SSO_LOGIN: "true"
+#            SSO_OPTIONS: "nosplash,logout"
+#            SSO_WHITELIST: "https://((dev-cf-route))/*"
+#            CF_CLIENT: stratos
+#            CF_CLIENT_SECRET: ((dev-cf-client-secret))
+#            SESSION_STORE_SECRET: ((dev-session-store-secret))
+#            DB_SSL_MODE: "verify-ca"
+#    on_failure:
+#      put: slack
+#      params:
+#        text: |
+#          :x: FAILED to deploy Stratos on dev
+#          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+#        channel: ((dev-slack-channel))
+#        username: ((slack-username))
+#        icon_url: ((slack-icon-url))
 
   # ══════════════════════════════════════════════════════════════
-  # stratos-v3 — dev-only, CF API v3 compatible build & deploy.
-  # Fully independent of the existing stratos flow. These jobs are
-  # leaf jobs: they do NOT feed staging or production.
+  # Stratos 5.x — dev / staging / production deploy pipeline.
+  # Replaces the 4.x compile-assets → compile-stratos → deploy-*
+  # chain. Uses the upstream cloudfoundry/stratos develop branch
+  # (plus cloud.gov fixes) compiled via compile-stratos-v5.
   # ══════════════════════════════════════════════════════════════
-  - name: compile-stratos-v3
+  - name: compile-stratos-v5
     serial: true
     plan:
       - in_parallel:
-          - get: stratos-v3-source
+          - get: stratos-v5-source
             trigger: true
           - get: config
             trigger: true
           - get: general-task
-      - task: build-stratos-v3
+      - task: build-stratos-v5
         image: general-task
         config:
           platform: linux
           inputs:
-            - name: stratos-v3-source
+            - name: stratos-v5-source
             - name: config
           outputs:
-            - name: compiled-v3
+            - name: compiled-v5
           params:
             NG_CLI_ANALYTICS: "false"
-            # develop-branch toolchain requirements (see .tool-versions)
             GO_VERSION: "1.26.5"
             NODE_VERSION: "26.2.0"
             BUN_VERSION: "1.3.14"
@@ -175,28 +173,12 @@ jobs:
             args:
               - -exc
               - |
-                # NOTE: this task requires outbound network egress to
-                # go.dev/dl, nodejs.org (via nvm), bun.sh and the npm
-                # registry to install the v5 build toolchain and deps.
-
-                # -- zip (required by build/release-cf.sh to package the CF zip) --
                 if ! command -v zip >/dev/null 2>&1; then
                   apt-get update && apt-get install -y zip
                 fi
 
-                cd stratos-v3-source
+                cd stratos-v5-source
 
-                # -- Apply dev-only stratos-v3 customizations (from config repo) --
-                # 1. stratos.yaml drives packages.exclude (removes the
-                #    Workloads/Kubernetes/Helm nav items) and the build-time
-                #    title; read by the build's extension-generator +
-                #    index-transformer. This is the same shared stratos.yaml
-                #    used by the 4.x flow (no separate stratos-v3.yaml).
-                # 2. company-config.json is the 5.x runtime branding config
-                #    (served at /assets/company-config.json): app name, colors,
-                #    login page, footer. It replaces the theme package default.
-                # 3. Branding assets (logo, nav-logo, favicon) overlay the
-                #    stock core assets referenced by company-config.json.
                 cp ../config/stratos.yaml ./stratos.yaml
                 cp ../config/custom-v3/company-config.json \
                   src/frontend/packages/theme/company-config.json
@@ -204,8 +186,6 @@ jobs:
                   src/frontend/packages/core/assets/logo.png
                 cp ../config/custom-v3/assets/core/nav-logo.png \
                   src/frontend/packages/core/assets/nav-logo.png
-                # favicon.ico location varies across branches; overlay wherever
-                # a stock one exists so the build picks up the branded icon.
                 for f in \
                   src/frontend/packages/core/favicon.ico \
                   src/frontend/packages/core/src/favicon.ico; do
@@ -213,9 +193,6 @@ jobs:
                     cp ../config/custom-v3/assets/favicon.ico "$f"
                   fi
                 done
-                # NOTE: the legacy "nosplash" login auto-redirect is now built
-                # into the upstream source (cloudfoundry/stratos PR #5678), so
-                # no login-page overlay/patch step is needed here.
 
                 ARCH="$(uname -m)"
                 case "$ARCH" in
@@ -224,7 +201,6 @@ jobs:
                   *) echo "unsupported arch: $ARCH" >&2; exit 1 ;;
                 esac
 
-                # -- Go --
                 curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${GOARCH}.tar.gz" -o /tmp/go.tgz
                 rm -rf /usr/local/go
                 tar -C /usr/local -xzf /tmp/go.tgz
@@ -233,7 +209,6 @@ jobs:
                 export PATH="${GOPATH}/bin:${PATH}"
                 go version
 
-                # -- Node (via nvm) --
                 export NVM_DIR="${PWD}/../.nvm"
                 mkdir -p "$NVM_DIR"
                 curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
@@ -242,97 +217,71 @@ jobs:
                 nvm use "${NODE_VERSION}"
                 node --version
 
-                # -- Bun --
                 export BUN_INSTALL="${PWD}/../.bun"
                 curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}"
                 export PATH="${BUN_INSTALL}/bin:${PATH}"
                 bun --version
 
-                # -- Build + package CF zip --
-                # The Makefile evaluates `npx tsc --version` at parse time
-                # (version.mk). With no node_modules and no TTY, npx blocks
-                # forever on an install confirmation prompt. Populate deps
-                # first with `bun install` so tsc resolves locally, and set
-                # npm_config_yes so npx never prompts. Then build via make.
                 export npm_config_yes=true
                 export CI=true
                 timeout 1800 bun install
 
-                # -- Regenerate custom-import.module.ts from our stratos.yaml --
-                # The app imports ./custom-import.module (NO underscore):
-                #   app.module.ts   -> CustomImportModule
-                #   app.routing.ts  -> CustomRoutingImportModule
-                # The build's extension-generator writes _custom-import.module.ts
-                # (WITH underscore); the old webpack build swapped one for the
-                # other via a module-replacement plugin, but the new esbuild
-                # `application` builder does not, so the committed
-                # custom-import.module.ts (which still imports Kubernetes) is
-                # what actually gets bundled. Regenerate BOTH names from our
-                # packages.exclude so @stratosui/kubernetes (Workloads/
-                # Kubernetes/Helm) is really dropped. Run after bun install so
-                # node_modules/deps for the generator are present.
                 node build/extension-generator.mjs \
                   --output src/frontend/packages/core/src/custom-import.module.ts
                 node build/extension-generator.mjs \
                   --output src/frontend/packages/core/src/_custom-import.module.ts
-                echo "---- generated custom-import.module.ts ----"
-                cat src/frontend/packages/core/src/custom-import.module.ts
 
                 timeout 1800 make build release cf
 
-                # release-cf.sh emits dist/stratos-cf-<version>.zip
                 ls -lah dist/
-                cp dist/stratos-cf-*.zip ../compiled-v3/
-                cd ../compiled-v3
+                cp dist/stratos-cf-*.zip ../compiled-v5/
+                cd ../compiled-v5
                 ls -lah
-      - put: compiled-v3
+      - put: compiled-v5
         params:
-          file: compiled-v3/stratos-cf-*.zip
+          file: compiled-v5/stratos-cf-*.zip
 
-  - name: deploy-stratos-v3-dev
+  - name: deploy-dev-v5
     serial: true
     plan:
       - in_parallel:
-          - get: compiled-v3
-            passed: [compile-stratos-v3]
+          - get: compiled-v5
+            passed: [compile-stratos-v5]
             trigger: true
           - get: config
             trigger: false
           - get: general-task
+      - put: create-db-dev-v5
+        resource: cf-cli-dev
+        params:
+          command: create-service
+          update_service: true
+          wait_for_service: true
+          timeout: 1200
+          service_instance: stratos-db-v5-encrypted
+          service: aws-rds
+          plan: medium-psql
       - put: cf-dev
         params:
-          # The s3 resource stores under versioned_file, so the downloaded
-          # file is named stratos-cf-v3.zip regardless of the built filename.
-          path: compiled-v3/stratos-cf-v3.zip
-          current_app_name: stratos-v3
+          path: compiled-v5/stratos-cf-v5.zip
+          current_app_name: stratos
           manifest: config/manifest.yml
           show_app_log: true
           vars:
-            name: stratos-v3
+            name: stratos
             instances: "3"
-            route: ((dev-v3-cf-route))
+            route: ((dev-cf-route))
+            db_service: stratos-db-v5-encrypted
           environment_variables:
             CF_API_URL: ((dev-cf-api-url))
             SSO_LOGIN: "true"
             SSO_OPTIONS: "nosplash,logout"
-            SSO_WHITELIST: "https://((dev-v3-cf-route))/*"
-            CF_CLIENT: stratos-v3
+            SSO_WHITELIST: "https://((dev-cf-route))/*"
+            CF_CLIENT: stratos
             CF_CLIENT_SECRET: ((dev-cf-client-secret))
             SESSION_STORE_SECRET: ((dev-session-store-secret))
-            DB_SSL_MODE: "verify-ca"
-            LOG_LEVEL: "debug"
             ENCRYPTION_KEY: ((dev-db-encryption-key))
-            # Content-Security-Policy. The built-in "default" policy uses
-            # connect-src 'self', which blocks the deploy wizard's direct
-            # browser calls to the git SCM APIs (GitHub/GitLab) — those are
-            # cross-origin XHR/fetch, not proxied. Supply a full policy that
-            # mirrors the built-in default but also allows the SCM hosts:
-            #   connect-src (XHR): api.github.com, workshop.cloud.gov (our
-            #     GitLab), gitlab.com (public GitLab)
-            #   img-src (avatars/logos): avatars.githubusercontent.com (repo/
-            #     org avatars), secure.gravatar.com (user gravatars), plus the
-            #     SCM hosts
-            # Set CONSOLE_CSP=off to disable the header entirely.
+            DB_SSL_MODE: "verify-ca"
             CONSOLE_CSP: >-
               default-src 'self';
               script-src 'self';
@@ -344,42 +293,47 @@ jobs:
               frame-ancestors 'self';
               base-uri 'self';
               form-action 'self'
-#    on_failure:
-#      put: slack
-#      params:
-#        text: |
-#          :x: FAILED to deploy Stratos v3 on dev
-#          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-#        channel: ((dev-slack-channel))
-#        username: ((slack-username))
-#        icon_url: ((slack-icon-url))
+    on_failure:
+      put: slack
+      params:
+        text: |
+          :x: FAILED to deploy Stratos v5 on dev
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: ((dev-slack-channel))
+        username: ((slack-username))
+        icon_url: ((slack-icon-url))
 
-  - name: deploy-staging
+  - name: deploy-staging-v5
     serial: true
     plan:
       - in_parallel:
-          - get: compiled
-            passed: [deploy-dev]
+          - get: compiled-v5
+            passed: [deploy-dev-v5]
             trigger: true
-            params:
-              unpack: true
           - get: config
             trigger: false
           - get: general-task
-      - put: create-db
+      - put: create-db-staging-v5
         resource: cf-cli-staging
         params:
-          <<: *db-params
+          command: create-service
+          update_service: true
+          wait_for_service: true
+          timeout: 1200
+          service_instance: stratos-db-v5-encrypted
+          service: aws-rds
+          plan: medium-psql
       - put: cf-staging
         params:
-          path: compiled/
+          path: compiled-v5/stratos-cf-v5.zip
           current_app_name: stratos
-          manifest: compiled/manifest.yml
+          manifest: config/manifest.yml
           show_app_log: true
           vars:
             name: stratos
             instances: "3"
             route: ((staging-cf-route))
+            db_service: stratos-db-v5-encrypted
           environment_variables:
             SSO_LOGIN: "true"
             SSO_OPTIONS: "nosplash,logout"
@@ -387,7 +341,19 @@ jobs:
             CF_CLIENT: stratos
             CF_CLIENT_SECRET: ((staging-cf-client-secret))
             SESSION_STORE_SECRET: ((staging-session-store-secret))
+            ENCRYPTION_KEY: ((staging-db-encryption-key))
             DB_SSL_MODE: "verify-ca"
+            CONSOLE_CSP: >-
+              default-src 'self';
+              script-src 'self';
+              style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+              font-src 'self' data: https://fonts.gstatic.com;
+              img-src 'self' data: https://api.github.com https://avatars.githubusercontent.com https://workshop.cloud.gov https://gitlab.com https://secure.gravatar.com;
+              connect-src 'self' https://api.github.com https://workshop.cloud.gov https://gitlab.com;
+              worker-src 'self' blob:;
+              frame-ancestors 'self';
+              base-uri 'self';
+              form-action 'self'
       - put: cf-staging
         # This can eventually be removed, once we're sure nobody is linking to
         # dashboard-beta.
@@ -404,38 +370,43 @@ jobs:
       put: slack
       params:
         text: |
-          :x: FAILED to deploy Stratos on staging
+          :x: FAILED to deploy Stratos v5 on staging
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
         channel: ((staging-slack-channel))
         username: ((slack-username))
         icon_url: ((slack-icon-url))
 
-  - name: deploy-production
+  - name: deploy-production-v5
     serial: true
     plan:
       - in_parallel:
-          - get: compiled
-            passed: [deploy-staging]
+          - get: compiled-v5
+            passed: [deploy-staging-v5]
             trigger: true
-            params:
-              unpack: true
           - get: config
             trigger: false
           - get: general-task
-      - put: create-db
+      - put: create-db-production-v5
         resource: cf-cli-production
         params:
-          <<: *db-params
+          command: create-service
+          update_service: true
+          wait_for_service: true
+          timeout: 1200
+          service_instance: stratos-db-v5-encrypted
+          service: aws-rds
+          plan: medium-psql
       - put: cf-production
         params:
-          path: compiled/
+          path: compiled-v5/stratos-cf-v5.zip
           current_app_name: stratos
-          manifest: compiled/manifest.yml
+          manifest: config/manifest.yml
           show_app_log: true
           vars:
             name: stratos
             instances: "3"
             route: ((production-cf-route))
+            db_service: stratos-db-v5-encrypted
           environment_variables:
             SSO_LOGIN: "true"
             SSO_OPTIONS: "nosplash,logout"
@@ -443,7 +414,19 @@ jobs:
             CF_CLIENT: stratos
             CF_CLIENT_SECRET: ((production-cf-client-secret))
             SESSION_STORE_SECRET: ((production-session-store-secret))
+            ENCRYPTION_KEY: ((production-db-encryption-key))
             DB_SSL_MODE: "verify-ca"
+            CONSOLE_CSP: >-
+              default-src 'self';
+              script-src 'self';
+              style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+              font-src 'self' data: https://fonts.gstatic.com;
+              img-src 'self' data: https://api.github.com https://avatars.githubusercontent.com https://workshop.cloud.gov https://gitlab.com https://secure.gravatar.com;
+              connect-src 'self' https://api.github.com https://workshop.cloud.gov https://gitlab.com;
+              worker-src 'self' blob:;
+              frame-ancestors 'self';
+              base-uri 'self';
+              form-action 'self'
       - put: cf-production
         # This can eventually be removed, once we're sure nobody is linking to
         # dashboard-beta.
@@ -460,11 +443,189 @@ jobs:
       put: slack
       params:
         text: |
-          :x: FAILED to deploy Stratos on production
+          :x: FAILED to deploy Stratos v5 on production
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
         channel: ((production-slack-channel))
         username: ((slack-username))
         icon_url: ((slack-icon-url))
+
+# ── 4.x staging/production deploy jobs commented out ─────────────────────────
+#  - name: deploy-staging
+#    serial: true
+#    plan:
+#      - in_parallel:
+#          - get: compiled
+#            passed: [deploy-dev]
+#            trigger: true
+#            params:
+#              unpack: true
+#          - get: config
+#            trigger: false
+#          - get: general-task
+#      - put: create-db
+#        resource: cf-cli-staging
+#        params:
+#          <<: *db-params
+#      - put: cf-staging
+#        params:
+#          path: compiled/
+#          current_app_name: stratos
+#          manifest: compiled/manifest.yml
+#          show_app_log: true
+#          vars:
+#            name: stratos
+#            instances: "3"
+#            route: ((staging-cf-route))
+#            db_service: stratos-db
+#          environment_variables:
+#            SSO_LOGIN: "true"
+#            SSO_OPTIONS: "nosplash,logout"
+#            SSO_WHITELIST: "https://((staging-cf-route))/*"
+#            CF_CLIENT: stratos
+#            CF_CLIENT_SECRET: ((staging-cf-client-secret))
+#            SESSION_STORE_SECRET: ((staging-session-store-secret))
+#            DB_SSL_MODE: "verify-ca"
+#      - put: cf-staging
+#        params:
+#          path: config/redirects
+#          manifest: config/redirects/manifest.yml
+#          current_app_name: dashboard-beta-redirects
+#          vars:
+#            external-route: dashboard-beta.fr-stage.cloud.gov
+#            app-route: dashboard-beta.apps.fr-stage.cloud.gov
+#            deprecated-route: dashboard-deprecated.fr-stage.cloud.gov
+#            redirect-url: dashboard.fr-stage.cloud.gov
+#    on_failure:
+#      put: slack
+#      params:
+#        text: |
+#          :x: FAILED to deploy Stratos on staging
+#          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+#        channel: ((staging-slack-channel))
+#        username: ((slack-username))
+#        icon_url: ((slack-icon-url))
+
+#  - name: deploy-production
+#    serial: true
+#    plan:
+#      - in_parallel:
+#          - get: compiled
+#            passed: [deploy-staging]
+#            trigger: true
+#            params:
+#              unpack: true
+#          - get: config
+#            trigger: false
+#          - get: general-task
+#      - put: create-db
+#        resource: cf-cli-production
+#        params:
+#          <<: *db-params
+#      - put: cf-production
+#        params:
+#          path: compiled/
+#          current_app_name: stratos
+#          manifest: compiled/manifest.yml
+#          show_app_log: true
+#          vars:
+#            name: stratos
+#            instances: "3"
+#            route: ((production-cf-route))
+#            db_service: stratos-db
+#          environment_variables:
+#            SSO_LOGIN: "true"
+#            SSO_OPTIONS: "nosplash,logout"
+#            SSO_WHITELIST: "https://((production-cf-route))/*"
+#            CF_CLIENT: stratos
+#            CF_CLIENT_SECRET: ((production-cf-client-secret))
+#            SESSION_STORE_SECRET: ((production-session-store-secret))
+#            DB_SSL_MODE: "verify-ca"
+#      - put: cf-production
+#        params:
+#          path: config/redirects
+#          manifest: config/redirects/manifest.yml
+#          current_app_name: dashboard-beta-redirects
+#          vars:
+#            external-route: dashboard-beta.fr.cloud.gov
+#            app-route: dashboard-beta.app.cloud.gov
+#            deprecated-route: dashboard-deprecated.fr.cloud.gov
+#            redirect-url: dashboard.fr.cloud.gov
+#    on_failure:
+#      put: slack
+#      params:
+#        text: |
+#          :x: FAILED to deploy Stratos on production
+#          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+#        channel: ((production-slack-channel))
+#        username: ((slack-username))
+#        icon_url: ((slack-icon-url))
+
+  # ── stratos-v3 (dev-only test instance) — commented out, being retired ──────
+#  - name: compile-stratos-v3
+#    serial: true
+#    plan:
+#      - in_parallel:
+#          - get: stratos-v3-source
+#            trigger: true
+#          - get: config
+#            trigger: true
+#          - get: general-task
+#      - task: build-stratos-v3
+#        image: general-task
+#        config:
+#          platform: linux
+#          inputs:
+#            - name: stratos-v3-source
+#            - name: config
+#          outputs:
+#            - name: compiled-v3
+#          params:
+#            NG_CLI_ANALYTICS: "false"
+#            GO_VERSION: "1.26.5"
+#            NODE_VERSION: "26.2.0"
+#            BUN_VERSION: "1.3.14"
+#          run:
+#            path: /bin/bash
+#            args:
+#              - -exc
+#              - |
+#                [build script omitted — see git history]
+#      - put: compiled-v3
+#        params:
+#          file: compiled-v3/stratos-cf-*.zip
+#
+#  - name: deploy-stratos-v3-dev
+#    serial: true
+#    plan:
+#      - in_parallel:
+#          - get: compiled-v3
+#            passed: [compile-stratos-v3]
+#            trigger: true
+#          - get: config
+#            trigger: false
+#          - get: general-task
+#      - put: cf-dev
+#        params:
+#          path: compiled-v3/stratos-cf-v3.zip
+#          current_app_name: stratos-v3
+#          manifest: config/manifest.yml
+#          show_app_log: true
+#          vars:
+#            name: stratos-v3
+#            instances: "3"
+#            route: ((dev-v3-cf-route))
+#            db_service: stratos-db
+#          environment_variables:
+#            CF_API_URL: ((dev-cf-api-url))
+#            SSO_LOGIN: "true"
+#            SSO_OPTIONS: "nosplash,logout"
+#            SSO_WHITELIST: "https://((dev-v3-cf-route))/*"
+#            CF_CLIENT: stratos-v3
+#            CF_CLIENT_SECRET: ((dev-cf-client-secret))
+#            SESSION_STORE_SECRET: ((dev-session-store-secret))
+#            ENCRYPTION_KEY: ((dev-db-encryption-key))
+#            DB_SSL_MODE: "verify-ca"
+#            LOG_LEVEL: "debug"
 
 resource_types:
   - name: registry-image
@@ -522,19 +683,11 @@ resource_types:
       tag: latest
 
 resources:
-  - name: stratos-source
-    type: git
-    icon: github-circle
-    source:
-      uri: https://github.com/cloud-gov/stratos
-      branch: main
-      commit_verification_keys: ((cloud-gov-pgp-keys))
-
   - name: config
     type: git
     icon: github-circle
     source:
-      uri: https://github.com/cloud-gov/cg-deploy-stratos.git
+      uri: https://github.com/cloud-gov/deploy-stratos.git
       branch: v3
       commit_verification_keys: ((cloud-gov-pgp-keys))
 
@@ -598,48 +751,23 @@ resources:
       org: ((production-cf-organization))
       space: ((production-cf-space))
 
-  - name: pre-compiled
-    type: s3-iam
-    icon: database
-    source:
-      bucket: cg-build-artifacts
-      versioned_file: deploy-stratos/precompiled-stratos.tgz
-      region_name: us-gov-west-1
-      server_side_encryption: AES256
-
-  - name: compiled
-    type: s3-iam
-    icon: database
-    source:
-      bucket: cg-build-artifacts
-      versioned_file: deploy-stratos/compiled-stratos.tgz
-      region_name: us-gov-west-1
-      server_side_encryption: AES256
-
-   # Testing PR #5728 (norm/fix/v2-disabled-capability-probe — probe fix) with
-   # additional fixes on top:
-   #   - fix(cfapppush): always use CC v3 API version for CLI minimum-version
-   #     checks (needed even when probe is fixed, since a v2-enabled foundation
-   #     returns "2.289.0" which is < CLI's MinVersionCNB "3.168.0")
-   #   - fix(sessiondata): reference http_sessions not sessions in cleanup query
-   # Once PR #5728 merges into develop, repoint to develop (cfapppush +
-   # sessiondata fixes will also need their own upstream PRs before that).
-  - name: stratos-v3-source
+  # ── Stratos 5.x source + artifact ────────────────────────────────────────────
+  - name: stratos-v5-source
     type: git
     icon: github-circle
     source:
       uri: https://github.com/cloudfoundry/stratos
+      # Testing PR #5728 + cfapppush + sessiondata fixes.
+      # Switch to `develop` once PRs #5728 and #5730 merge.
       branch: test/pr-5728-with-fixes
+      commit_verification_keys: ((cloud-gov-pgp-keys))
 
-  - name: compiled-v3
+  - name: compiled-v5
     type: s3-iam
     icon: database
     source:
       bucket: cg-build-artifacts
-      # Stored as .zip because the artifact is the CF-pushable zip produced
-      # by build/release-cf.sh (not a tgz). The stored object always takes
-      # this name, so the deploy job globs it as stratos-cf-v3.zip.
-      versioned_file: deploy-stratos/stratos-cf-v3.zip
+      versioned_file: deploy-stratos/stratos-cf-v5.zip
       region_name: us-gov-west-1
       server_side_encryption: AES256
 
