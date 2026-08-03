@@ -180,17 +180,17 @@ jobs:
                 cd stratos-v5-source
 
                 cp ../config/stratos.yaml ./stratos.yaml
-                cp ../config/custom-v3/company-config.json \
+                cp ../config/theming/company-config.json \
                   src/frontend/packages/theme/company-config.json
-                cp ../config/custom-v3/assets/core/logo.png \
+                cp ../config/theming/assets/core/logo.png \
                   src/frontend/packages/core/assets/logo.png
-                cp ../config/custom-v3/assets/core/nav-logo.png \
+                cp ../config/theming/assets/core/nav-logo.png \
                   src/frontend/packages/core/assets/nav-logo.png
                 for f in \
                   src/frontend/packages/core/favicon.ico \
                   src/frontend/packages/core/src/favicon.ico; do
                   if [ -f "$f" ]; then
-                    cp ../config/custom-v3/assets/favicon.ico "$f"
+                    cp ../config/theming/assets/favicon.ico "$f"
                   fi
                 done
 
@@ -759,8 +759,8 @@ resources:
       uri: https://github.com/cloudfoundry/stratos
       # Testing PR #5728 + cfapppush + sessiondata fixes.
       # Switch to `develop` once PRs #5728 and #5730 merge.
-      branch: test/pr-5728-with-fixes
-      commit_verification_keys: ((cloud-gov-pgp-keys))
+      branch: develop #test/pr-5728-with-fixes
+      #commit_verification_keys: ((cloud-gov-pgp-keys))
 
   - name: compiled-v5
     type: s3-iam
