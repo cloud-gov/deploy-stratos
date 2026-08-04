@@ -19,7 +19,7 @@ compile-stratos-v5
 
 The build pulls from `cloudfoundry/stratos` (upstream), applies cloud.gov
 theming from the [`theming/`](theming/) folder, and packages the result as a
-CF-pushable zip using `make build release cf`.
+CF-pushable zip using `make build release cf`. 
 
 ---
 
