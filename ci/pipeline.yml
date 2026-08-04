@@ -4,140 +4,273 @@ jobs:
     plan:
       - get: config
         trigger: true
-#      - set_pipeline: self
-#        file: config/ci/pipeline.yml
+      - set_pipeline: self
+        file: config/ci/pipeline.yml
 
-# ── 4.x compile jobs commented out — no longer needed with v5 pipeline ────────
-#  - name: compile-assets
-#    serial: true
-#    plan:
-#      - in_parallel:
-#          - get: stratos-source
-#            trigger: true
-#          - get: config
-#            passed: [set-self]
-#            trigger: true
-#          - get: general-task
-#      - task: precompile
-#        image: general-task
-#        config:
-#          platform: linux
-#          inputs:
-#            - name: stratos-source
-#            - name: config
-#          outputs:
-#            - name: pre-compiled
-#          params:
-#            NG_CLI_ANALYTICS: "false"
-#          caches:
-#            - path: .npm
-#            - path: stratos-source/node_modules
-#          run:
-#            path: sh
-#            args:
-#              - -ilexc
-#              - |
-#                cd stratos-source
-#                export NODE_OPTIONS=--openssl-legacy-provider
-#                cp -a ../config/custom_theme ./src/frontend/packages/custom_theme
-#                cp ../config/stratos.yaml .
-#                npm config set cache $(pwd)/../.npm --global
-#                npm install
-#                npm run dev-setup && npm run build-devkit && npm run clean-symlinks && npm run store-git-metadata && npm run prepare-backend
-#                npm run prebuild-ui
-#                cp ../config/manifest.yml .
-#                tar -czf ../pre-compiled/precompiled-stratos.tgz \
-#                  --exclude-ignore=.cfignore \
-#                  .
-#      - put: pre-compiled
-#        params:
-#          file: pre-compiled/precompiled-stratos.tgz
+# ── 4.x compile jobs — re-enabled to support legacy parallel deployment ────────
+  - name: compile-assets
+    serial: true
+    plan:
+      - in_parallel:
+          - get: stratos-source
+            trigger: true
+          - get: config
+            passed: [set-self]
+            trigger: true
+          - get: general-task
+      - task: precompile
+        image: general-task
+        config:
+          platform: linux
+          inputs:
+            - name: stratos-source
+            - name: config
+          outputs:
+            - name: pre-compiled
+          params:
+            NG_CLI_ANALYTICS: "false"
+          caches:
+            - path: .npm
+            - path: stratos-source/node_modules
+          run:
+            path: sh
+            args:
+              - -ilexc
+              - |
+                cd stratos-source
+                export NODE_OPTIONS=--openssl-legacy-provider
+                cp -a ../config/custom_theme ./src/frontend/packages/custom_theme
+                cp ../config/stratos.yaml .
+                npm config set cache $(pwd)/../.npm --global
+                npm install
+                npm run dev-setup && npm run build-devkit && npm run clean-symlinks && npm run store-git-metadata && npm run prepare-backend
+                npm run prebuild-ui
+                cp ../config/manifest.yml .
+                tar -czf ../pre-compiled/precompiled-stratos.tgz \
+                  --exclude-ignore=.cfignore \
+                  .
+      - put: pre-compiled
+        params:
+          file: pre-compiled/precompiled-stratos.tgz
 
-#  - name: compile-stratos
-#    serial: true
-#    plan:
-#      - in_parallel:
-#          - get: pre-compiled
-#            passed: [compile-assets]
-#            trigger: true
-#            params:
-#              unpack: true
-#          - get: general-task
-#      - task: build-stratos
-#        image: general-task
-#        config:
-#          platform: linux
-#          inputs:
-#            - name: pre-compiled
-#          outputs:
-#            - name: compiled
-#          run:
-#            path: /bin/sh
-#            args:
-#              - -cx
-#              - |
-#                ls -lah ./pre-compiled
-#                apt-get update && apt-get install unzip
-#                cd pre-compiled
-#                ls -lah
-#                rm -rf dist
-#                deploy/cloud-foundry/build.sh
-#                tar zcvf compiled-stratos.tgz .
-#                mv compiled-stratos.tgz ../compiled/
-#      - put: compiled
-#        params:
-#          file: compiled/compiled-stratos.tgz
+  - name: compile-stratos
+    serial: true
+    plan:
+      - in_parallel:
+          - get: pre-compiled
+            passed: [compile-assets]
+            trigger: true
+            params:
+              unpack: true
+          - get: general-task
+      - task: build-stratos
+        image: general-task
+        config:
+          platform: linux
+          inputs:
+            - name: pre-compiled
+          outputs:
+            - name: compiled
+          run:
+            path: /bin/sh
+            args:
+              - -cx
+              - |
+                ls -lah ./pre-compiled
+                apt-get update && apt-get install unzip
+                cd pre-compiled
+                ls -lah
+                rm -rf dist
+                deploy/cloud-foundry/build.sh
+                tar zcvf compiled-stratos.tgz .
+                mv compiled-stratos.tgz ../compiled/
+      - put: compiled
+        params:
+          file: compiled/compiled-stratos.tgz
 
-# ── 4.x deploy jobs commented out — replaced by 5.x jobs below ──────────────
-#  - name: deploy-dev
-#    serial: true
-#    plan:
-#      - in_parallel:
-#          - get: compiled
-#            passed: [compile-stratos]
-#            trigger: true
-#            params:
-#              unpack: true
-#          - get: general-task
-#      - put: create-db
-#        resource: cf-cli-dev
-#        params: &db-params
-#          command: create-service
-#          update_service: true
-#          wait_for_service: true
-#          timeout: 1200
-#          service_instance: stratos-db
-#          service: aws-rds
-#          plan: medium-psql
-#      - put: cf-dev
-#        params:
-#          path: compiled
-#          current_app_name: stratos
-#          manifest: compiled/manifest.yml
-#          show_app_log: true
-#          vars:
-#            name: stratos
-#            instances: "3"
-#            route: ((dev-cf-route))
-#            db_service: stratos-db
-#          environment_variables:
-#            CF_API_URL: ((dev-cf-api-url))
-#            SSO_LOGIN: "true"
-#            SSO_OPTIONS: "nosplash,logout"
-#            SSO_WHITELIST: "https://((dev-cf-route))/*"
-#            CF_CLIENT: stratos
-#            CF_CLIENT_SECRET: ((dev-cf-client-secret))
-#            SESSION_STORE_SECRET: ((dev-session-store-secret))
-#            DB_SSL_MODE: "verify-ca"
-#    on_failure:
-#      put: slack
-#      params:
-#        text: |
-#          :x: FAILED to deploy Stratos on dev
-#          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-#        channel: ((dev-slack-channel))
-#        username: ((slack-username))
-#        icon_url: ((slack-icon-url))
+  # ══════════════════════════════════════════════════════════════
+  # Stratos 4.x legacy — parallel deployment during v5 transition.
+  # Routes to dashboard-legacy.* in each environment.
+  # Uses stratos-db (unencrypted), stratos-legacy UAA client.
+  # Remove these jobs once the 2-week transition period ends.
+  # ══════════════════════════════════════════════════════════════
+  - name: deploy-dev-legacy
+    serial: true
+    plan:
+      - in_parallel:
+          - get: compiled
+            passed: [compile-stratos]
+            trigger: true
+            params:
+              unpack: true
+          - get: config
+            trigger: false
+          - get: general-task
+      - put: create-db-dev-legacy
+        resource: cf-cli-dev
+        params:
+          command: create-service
+          update_service: true
+          wait_for_service: true
+          timeout: 1200
+          service_instance: stratos-db-legacy
+          service: aws-rds
+          plan: medium-psql
+      - put: create-client-dev-legacy
+        resource: cf-cli-dev
+        params:
+          command: create-service
+          service_instance: stratos-legacy-uaa-dev
+          service: cloud-gov-identity-provider
+          plan: oauth-client
+          configuration: '{"redirect_uri": ["https://((dev-legacy-cf-route))/pp/v1/auth/sso_login_callback"]}'
+      - put: cf-dev
+        params:
+          path: compiled
+          current_app_name: stratos-legacy
+          manifest: config/manifest.yml
+          show_app_log: true
+          vars:
+            name: stratos-legacy
+            instances: "3"
+            route: ((dev-legacy-cf-route))
+            db_service: stratos-db-legacy
+          environment_variables:
+            CF_API_URL: ((dev-cf-api-url))
+            SSO_LOGIN: "true"
+            SSO_OPTIONS: "nosplash,logout"
+            SSO_WHITELIST: "https://((dev-legacy-cf-route))/*"
+            CF_CLIENT: ((dev-legacy-cf-client-id))
+            CF_CLIENT_SECRET: ((dev-legacy-cf-client-secret))
+            SESSION_STORE_SECRET: ((dev-session-store-secret))
+            DB_SSL_MODE: "verify-ca"
+    on_failure:
+      put: slack
+      params:
+        text: |
+          :x: FAILED to deploy Stratos legacy on dev
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: ((dev-slack-channel))
+        username: ((slack-username))
+        icon_url: ((slack-icon-url))
+
+  - name: deploy-staging-legacy
+    serial: true
+    plan:
+      - in_parallel:
+          - get: compiled
+            passed: [deploy-dev-legacy]
+            trigger: true
+            params:
+              unpack: true
+          - get: config
+            trigger: false
+          - get: general-task
+      - put: create-db-staging-legacy
+        resource: cf-cli-staging
+        params:
+          command: create-service
+          update_service: true
+          wait_for_service: true
+          timeout: 1200
+          service_instance: stratos-db
+          service: aws-rds
+          plan: medium-psql
+      - put: create-client-staging-legacy
+        resource: cf-cli-staging
+        params:
+          command: create-service
+          service_instance: stratos-legacy-uaa-staging
+          service: cloud-gov-identity-provider
+          plan: oauth-client
+          configuration: '{"redirect_uri": ["https://((staging-legacy-cf-route))/pp/v1/auth/sso_login_callback"]}'
+      - put: cf-staging
+        params:
+          path: compiled
+          current_app_name: stratos-legacy
+          manifest: config/manifest.yml
+          show_app_log: true
+          vars:
+            name: stratos-legacy
+            instances: "3"
+            route: ((staging-legacy-cf-route))
+            db_service: stratos-db
+          environment_variables:
+            SSO_LOGIN: "true"
+            SSO_OPTIONS: "nosplash,logout"
+            SSO_WHITELIST: "https://((staging-legacy-cf-route))/*"
+            CF_CLIENT: ((staging-legacy-cf-client-id))
+            CF_CLIENT_SECRET: ((staging-legacy-cf-client-secret))
+            SESSION_STORE_SECRET: ((staging-session-store-secret))
+            DB_SSL_MODE: "verify-ca"
+    on_failure:
+      put: slack
+      params:
+        text: |
+          :x: FAILED to deploy Stratos legacy on staging
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: ((staging-slack-channel))
+        username: ((slack-username))
+        icon_url: ((slack-icon-url))
+
+  - name: deploy-production-legacy
+    serial: true
+    plan:
+      - in_parallel:
+          - get: compiled
+            passed: [deploy-staging-legacy]
+            trigger: true
+            params:
+              unpack: true
+          - get: config
+            trigger: false
+          - get: general-task
+      - put: create-db-production-legacy
+        resource: cf-cli-production
+        params:
+          command: create-service
+          update_service: true
+          wait_for_service: true
+          timeout: 1200
+          service_instance: stratos-db
+          service: aws-rds
+          plan: medium-psql
+      - put: create-client-production-legacy
+        resource: cf-cli-production
+        params:
+          command: create-service
+          service_instance: stratos-legacy-uaa-production
+          service: cloud-gov-identity-provider
+          plan: oauth-client
+          configuration: '{"redirect_uri": ["https://((production-legacy-cf-route))/pp/v1/auth/sso_login_callback"]}'
+      - put: cf-production
+        params:
+          path: compiled
+          current_app_name: stratos-legacy
+          manifest: config/manifest.yml
+          show_app_log: true
+          vars:
+            name: stratos-legacy
+            instances: "3"
+            route: ((production-legacy-cf-route))
+            db_service: stratos-db
+          environment_variables:
+            SSO_LOGIN: "true"
+            SSO_OPTIONS: "nosplash,logout"
+            SSO_WHITELIST: "https://((production-legacy-cf-route))/*"
+            CF_CLIENT: ((production-legacy-cf-client-id))
+            CF_CLIENT_SECRET: ((production-legacy-cf-client-secret))
+            SESSION_STORE_SECRET: ((production-session-store-secret))
+            DB_SSL_MODE: "verify-ca"
+    on_failure:
+      put: slack
+      params:
+        text: |
+          :x: FAILED to deploy Stratos legacy on production
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: ((production-slack-channel))
+        username: ((slack-username))
+        icon_url: ((slack-icon-url))
 
   # ══════════════════════════════════════════════════════════════
   # Stratos 5.x — dev / staging / production deploy pipeline.
@@ -449,184 +582,6 @@ jobs:
         username: ((slack-username))
         icon_url: ((slack-icon-url))
 
-# ── 4.x staging/production deploy jobs commented out ─────────────────────────
-#  - name: deploy-staging
-#    serial: true
-#    plan:
-#      - in_parallel:
-#          - get: compiled
-#            passed: [deploy-dev]
-#            trigger: true
-#            params:
-#              unpack: true
-#          - get: config
-#            trigger: false
-#          - get: general-task
-#      - put: create-db
-#        resource: cf-cli-staging
-#        params:
-#          <<: *db-params
-#      - put: cf-staging
-#        params:
-#          path: compiled/
-#          current_app_name: stratos
-#          manifest: compiled/manifest.yml
-#          show_app_log: true
-#          vars:
-#            name: stratos
-#            instances: "3"
-#            route: ((staging-cf-route))
-#            db_service: stratos-db
-#          environment_variables:
-#            SSO_LOGIN: "true"
-#            SSO_OPTIONS: "nosplash,logout"
-#            SSO_WHITELIST: "https://((staging-cf-route))/*"
-#            CF_CLIENT: stratos
-#            CF_CLIENT_SECRET: ((staging-cf-client-secret))
-#            SESSION_STORE_SECRET: ((staging-session-store-secret))
-#            DB_SSL_MODE: "verify-ca"
-#      - put: cf-staging
-#        params:
-#          path: config/redirects
-#          manifest: config/redirects/manifest.yml
-#          current_app_name: dashboard-beta-redirects
-#          vars:
-#            external-route: dashboard-beta.fr-stage.cloud.gov
-#            app-route: dashboard-beta.apps.fr-stage.cloud.gov
-#            deprecated-route: dashboard-deprecated.fr-stage.cloud.gov
-#            redirect-url: dashboard.fr-stage.cloud.gov
-#    on_failure:
-#      put: slack
-#      params:
-#        text: |
-#          :x: FAILED to deploy Stratos on staging
-#          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-#        channel: ((staging-slack-channel))
-#        username: ((slack-username))
-#        icon_url: ((slack-icon-url))
-
-#  - name: deploy-production
-#    serial: true
-#    plan:
-#      - in_parallel:
-#          - get: compiled
-#            passed: [deploy-staging]
-#            trigger: true
-#            params:
-#              unpack: true
-#          - get: config
-#            trigger: false
-#          - get: general-task
-#      - put: create-db
-#        resource: cf-cli-production
-#        params:
-#          <<: *db-params
-#      - put: cf-production
-#        params:
-#          path: compiled/
-#          current_app_name: stratos
-#          manifest: compiled/manifest.yml
-#          show_app_log: true
-#          vars:
-#            name: stratos
-#            instances: "3"
-#            route: ((production-cf-route))
-#            db_service: stratos-db
-#          environment_variables:
-#            SSO_LOGIN: "true"
-#            SSO_OPTIONS: "nosplash,logout"
-#            SSO_WHITELIST: "https://((production-cf-route))/*"
-#            CF_CLIENT: stratos
-#            CF_CLIENT_SECRET: ((production-cf-client-secret))
-#            SESSION_STORE_SECRET: ((production-session-store-secret))
-#            DB_SSL_MODE: "verify-ca"
-#      - put: cf-production
-#        params:
-#          path: config/redirects
-#          manifest: config/redirects/manifest.yml
-#          current_app_name: dashboard-beta-redirects
-#          vars:
-#            external-route: dashboard-beta.fr.cloud.gov
-#            app-route: dashboard-beta.app.cloud.gov
-#            deprecated-route: dashboard-deprecated.fr.cloud.gov
-#            redirect-url: dashboard.fr.cloud.gov
-#    on_failure:
-#      put: slack
-#      params:
-#        text: |
-#          :x: FAILED to deploy Stratos on production
-#          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
-#        channel: ((production-slack-channel))
-#        username: ((slack-username))
-#        icon_url: ((slack-icon-url))
-
-  # ── stratos-v3 (dev-only test instance) — commented out, being retired ──────
-#  - name: compile-stratos-v3
-#    serial: true
-#    plan:
-#      - in_parallel:
-#          - get: stratos-v3-source
-#            trigger: true
-#          - get: config
-#            trigger: true
-#          - get: general-task
-#      - task: build-stratos-v3
-#        image: general-task
-#        config:
-#          platform: linux
-#          inputs:
-#            - name: stratos-v3-source
-#            - name: config
-#          outputs:
-#            - name: compiled-v3
-#          params:
-#            NG_CLI_ANALYTICS: "false"
-#            GO_VERSION: "1.26.5"
-#            NODE_VERSION: "26.2.0"
-#            BUN_VERSION: "1.3.14"
-#          run:
-#            path: /bin/bash
-#            args:
-#              - -exc
-#              - |
-#                [build script omitted — see git history]
-#      - put: compiled-v3
-#        params:
-#          file: compiled-v3/stratos-cf-*.zip
-#
-#  - name: deploy-stratos-v3-dev
-#    serial: true
-#    plan:
-#      - in_parallel:
-#          - get: compiled-v3
-#            passed: [compile-stratos-v3]
-#            trigger: true
-#          - get: config
-#            trigger: false
-#          - get: general-task
-#      - put: cf-dev
-#        params:
-#          path: compiled-v3/stratos-cf-v3.zip
-#          current_app_name: stratos-v3
-#          manifest: config/manifest.yml
-#          show_app_log: true
-#          vars:
-#            name: stratos-v3
-#            instances: "3"
-#            route: ((dev-v3-cf-route))
-#            db_service: stratos-db
-#          environment_variables:
-#            CF_API_URL: ((dev-cf-api-url))
-#            SSO_LOGIN: "true"
-#            SSO_OPTIONS: "nosplash,logout"
-#            SSO_WHITELIST: "https://((dev-v3-cf-route))/*"
-#            CF_CLIENT: stratos-v3
-#            CF_CLIENT_SECRET: ((dev-cf-client-secret))
-#            SESSION_STORE_SECRET: ((dev-session-store-secret))
-#            ENCRYPTION_KEY: ((dev-db-encryption-key))
-#            DB_SSL_MODE: "verify-ca"
-#            LOG_LEVEL: "debug"
-
 resource_types:
   - name: registry-image
     type: registry-image
@@ -683,12 +638,40 @@ resource_types:
       tag: latest
 
 resources:
+  # ── 4.x source — re-enabled for legacy parallel deployment ───────────────────
+  - name: stratos-source
+    type: git
+    icon: github-circle
+    source:
+      uri: https://github.com/cloud-gov/stratos
+      branch: main
+      commit_verification_keys: ((cloud-gov-pgp-keys))
+
+  # ── 4.x S3 artifacts — re-enabled for legacy parallel deployment ─────────────
+  - name: pre-compiled
+    type: s3-iam
+    icon: database
+    source:
+      bucket: cg-build-artifacts
+      versioned_file: deploy-stratos/precompiled-stratos.tgz
+      region_name: us-gov-west-1
+      server_side_encryption: AES256
+
+  - name: compiled
+    type: s3-iam
+    icon: database
+    source:
+      bucket: cg-build-artifacts
+      versioned_file: deploy-stratos/compiled-stratos.tgz
+      region_name: us-gov-west-1
+      server_side_encryption: AES256
+
   - name: config
     type: git
     icon: github-circle
     source:
       uri: https://github.com/cloud-gov/deploy-stratos.git
-      branch: v3
+      branch: main
       commit_verification_keys: ((cloud-gov-pgp-keys))
 
   - name: cf-dev
@@ -757,10 +740,7 @@ resources:
     icon: github-circle
     source:
       uri: https://github.com/cloudfoundry/stratos
-      # Testing PR #5728 + cfapppush + sessiondata fixes.
-      # Switch to `develop` once PRs #5728 and #5730 merge.
-      branch: develop #test/pr-5728-with-fixes
-      #commit_verification_keys: ((cloud-gov-pgp-keys))
+      branch: develop 
 
   - name: compiled-v5
     type: s3-iam
