@@ -96,14 +96,14 @@ git clone https://github.com/cloudfoundry/stratos.git
 cd stratos
 
 # Apply cloud.gov theming
-cp /path/to/cg-deploy-stratos/stratos.yaml ./stratos.yaml
-cp /path/to/cg-deploy-stratos/theming/company-config.json \
+cp /path/to/deploy-stratos/stratos.yaml ./stratos.yaml
+cp /path/to/deploy-stratos/theming/company-config.json \
    src/frontend/packages/theme/company-config.json
-cp /path/to/cg-deploy-stratos/theming/assets/core/logo.png \
+cp /path/to/deploy-stratos/theming/assets/core/logo.png \
    src/frontend/packages/core/assets/logo.png
-cp /path/to/cg-deploy-stratos/theming/assets/core/nav-logo.png \
+cp /path/to/deploy-stratos/theming/assets/core/nav-logo.png \
    src/frontend/packages/core/assets/nav-logo.png
-cp /path/to/cg-deploy-stratos/theming/assets/favicon.ico \
+cp /path/to/deploy-stratos/theming/assets/favicon.ico \
    src/frontend/packages/core/favicon.ico
 ```
 
