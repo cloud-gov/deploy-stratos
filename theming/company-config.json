@@ -1,0 +1,57 @@
+{
+  "company": {
+    "name": "Cloud.gov",
+    "displayName": "Cloud.gov",
+    "website": "https://cloud.gov",
+    "supportEmail": "support@cloud.gov"
+  },
+  "logos": {
+    "main": "/core/assets/logo.png",
+    "navigation": "/core/assets/nav-logo.png",
+    "navigationIcon": "/core/assets/nav-logo.png",
+    "favicon": "/favicon.ico",
+    "loginBackground": ""
+  },
+  "theme": {
+    "primary": "#005699",
+    "secondary": "#046cd5",
+    "accent": "#046cd5",
+    "success": "#22c55e",
+    "warning": "#f59e0b",
+    "danger": "#ef4444",
+    "info": "#005699"
+  },
+  "navigation": {
+    "background": "#1e293b",
+    "text": "#ffffff",
+    "hover": "rgba(255, 255, 255, 0.1)",
+    "active": "rgba(255, 255, 255, 0.15)"
+  },
+  "layout": {
+    "background": "#f8fafc",
+    "text": "#1e293b",
+    "headerBackground": "#ffffff",
+    "headerText": "#1e293b"
+  },
+  "login": {
+    "title": "cloud.gov",
+    "subtitle": "Cloud Foundry Console",
+    "showLogo": true,
+    "showTitle": true,
+    "backgroundColor": "#005699",
+    "cardBackground": "#ffffff"
+  },
+  "footer": {
+    "copyright": "cloud.gov"
+  },
+  "defaults": {
+    "themeMode": "light",
+    "sidebarOpen": true,
+    "sidebarPinned": true,
+    "pollingEnabled": true,
+    "sessionTimeout": true,
+    "gravatarEnabled": true,
+    "pageSize": 9,
+    "viewMode": "cards"
+  }
+}

@@ -1,5 +1,5 @@
 applications:
-  - name: stratos
+  - name: ((name))
     routes:
       - route: ((route))
     memory: 512M
@@ -8,7 +8,7 @@ applications:
     buildpacks:
     - binary_buildpack
     health-check-type: port
-    instances: 3
+    instances: ((instances))
     services:
-    - stratos-db
+    - ((db_service))
     command: ./jetstream

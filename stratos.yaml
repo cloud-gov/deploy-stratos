@@ -1,3 +1,13 @@
+# `title` sets the browser tab <title> at build time (index-transformer.js
+# replaces the @@TITLE@@ token in index.html). Runtime UI names come from
+# company-config.json.
+title: cloud.gov
+#
+# `packages.exclude` removes whole feature packages from the build. Excluding
+# @stratosui/kubernetes removes the Workloads, Kubernetes, and Helm left-nav
+# items together (all three nav routes are declared in that one package).
+# The @example/* and desktop-extensions packages are default-excluded by the
+# build, but listed explicitly here to match the legacy deploy-stratos config.
 packages:
   exclude:
     - '@stratosui/kubernetes'
