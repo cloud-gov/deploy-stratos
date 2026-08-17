@@ -740,7 +740,7 @@ resources:
     icon: github-circle
     source:
       uri: https://github.com/cloudfoundry/stratos
-      branch: develop 
+      tag_filter: "v5.*"
 
   - name: compiled-v5
     type: s3-iam
