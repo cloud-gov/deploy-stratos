@@ -735,10 +735,6 @@ resources:
       space: ((production-cf-space))
 
   # ── Stratos 5.x source + artifact ────────────────────────────────────────────
-  # Tracks official Stratos 5.x releases (tags) rather than the develop branch.
-  # 5.x release tags use a `v` prefix (e.g. v5.2.0). tag_filter matches the
-  # 5.x series. To pin to a single release, replace tag_filter with
-  # `tag: v5.2.0`.
   - name: stratos-v5-source
     type: git
     icon: github-circle
