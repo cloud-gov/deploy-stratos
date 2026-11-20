@@ -109,6 +109,173 @@ jobs:
         params:
           file: compiled-v5/stratos-cf-*.zip
 
+  # ══════════════════════════════════════════════════════════════
+  # Stratos 5.x "develop" comparison track — production only.
+  # Builds from the upstream cloudfoundry/stratos `develop` branch
+  # (see the stratos-v5-develop-source resource) and deploys straight
+  # to production as a second app (dashboard-develop route) so the
+  # released dashboard and the in-progress develop branch can be
+  # compared side by side. Fully independent of the dev/staging/
+  # production-v5 release-tag promotion chain above.
+  # ══════════════════════════════════════════════════════════════
+  - name: compile-stratos-v5-develop
+    serial: true
+    plan:
+      - in_parallel:
+          - get: stratos-v5-develop-source
+            trigger: true
+          - get: config
+            trigger: true
+          - get: general-task
+      - task: build-stratos-v5-develop
+        image: general-task
+        config:
+          platform: linux
+          inputs:
+            - name: stratos-v5-develop-source
+            - name: config
+          outputs:
+            - name: compiled-v5-develop
+          params:
+            NG_CLI_ANALYTICS: "false"
+            GO_VERSION: "1.26.5"
+            NODE_VERSION: "26.2.0"
+            BUN_VERSION: "1.3.14"
+          run:
+            path: /bin/bash
+            args:
+              - -exc
+              - |
+                if ! command -v zip >/dev/null 2>&1; then
+                  apt-get update && apt-get install -y zip
+                fi
+
+                cd stratos-v5-develop-source
+
+                cp ../config/stratos.yaml ./stratos.yaml
+                cp ../config/theming/company-config.json \
+                  src/frontend/packages/theme/company-config.json
+                cp ../config/theming/assets/core/logo.png \
+                  src/frontend/packages/core/assets/logo.png
+                cp ../config/theming/assets/core/nav-logo.png \
+                  src/frontend/packages/core/assets/nav-logo.png
+                for f in \
+                  src/frontend/packages/core/favicon.ico \
+                  src/frontend/packages/core/src/favicon.ico; do
+                  if [ -f "$f" ]; then
+                    cp ../config/theming/assets/favicon.ico "$f"
+                  fi
+                done
+
+                ARCH="$(uname -m)"
+                case "$ARCH" in
+                  x86_64) GOARCH=amd64 ;;
+                  aarch64|arm64) GOARCH=arm64 ;;
+                  *) echo "unsupported arch: $ARCH" >&2; exit 1 ;;
+                esac
+
+                curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${GOARCH}.tar.gz" -o /tmp/go.tgz
+                rm -rf /usr/local/go
+                tar -C /usr/local -xzf /tmp/go.tgz
+                export PATH="/usr/local/go/bin:${PATH}"
+                export GOPATH="${PWD}/../gopath"
+                export PATH="${GOPATH}/bin:${PATH}"
+                go version
+
+                export NVM_DIR="${PWD}/../.nvm"
+                mkdir -p "$NVM_DIR"
+                curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+                . "$NVM_DIR/nvm.sh"
+                nvm install "${NODE_VERSION}"
+                nvm use "${NODE_VERSION}"
+                node --version
+
+                export BUN_INSTALL="${PWD}/../.bun"
+                curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}"
+                export PATH="${BUN_INSTALL}/bin:${PATH}"
+                bun --version
+
+                export npm_config_yes=true
+                export CI=true
+                timeout 1800 bun install
+
+                node build/extension-generator.mjs \
+                  --output src/frontend/packages/core/src/custom-import.module.ts
+                node build/extension-generator.mjs \
+                  --output src/frontend/packages/core/src/_custom-import.module.ts
+
+                timeout 1800 make build release cf
+
+                ls -lah dist/
+                cp dist/stratos-cf-*.zip ../compiled-v5-develop/
+                cd ../compiled-v5-develop
+                mv stratos-cf-*.zip stratos-cf-v5-develop.zip
+                ls -lah
+      - put: compiled-v5-develop
+        params:
+          file: compiled-v5-develop/stratos-cf-v5-develop.zip
+
+  - name: deploy-production-v5-develop
+    serial: true
+    plan:
+      - in_parallel:
+          - get: compiled-v5-develop
+            passed: [compile-stratos-v5-develop]
+            trigger: true
+          - get: config
+            trigger: false
+          - get: general-task
+      - put: create-db-production-v5-develop
+        resource: cf-cli-production
+        params:
+          command: create-service
+          update_service: true
+          wait_for_service: true
+          timeout: 1200
+          service_instance: stratos-db-v5-develop-encrypted
+          service: aws-rds
+          plan: medium-psql
+      - put: cf-production
+        params:
+          path: compiled-v5-develop/stratos-cf-v5-develop.zip
+          current_app_name: stratos-develop
+          manifest: config/manifest.yml
+          show_app_log: true
+          vars:
+            name: stratos-develop
+            instances: "2"
+            route: ((production-dashboard-develop-route))
+            db_service: stratos-db-v5-develop-encrypted
+          environment_variables:
+            SSO_LOGIN: "true"
+            SSO_OPTIONS: "nosplash,logout"
+            SSO_WHITELIST: "https://((production-dashboard-develop-route))/*"
+            CF_CLIENT: stratos-develop
+            CF_CLIENT_SECRET: ((production-dashboard-develop-cf-client-secret))
+            SESSION_STORE_SECRET: ((production-dashboard-develop-session-store-secret))
+            ENCRYPTION_KEY: ((production-dashboard-develop-db-encryption-key))
+            DB_SSL_MODE: "verify-ca"
+            CONSOLE_CSP: >-
+              default-src 'self';
+              script-src 'self';
+              style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+              font-src 'self' data: https://fonts.gstatic.com;
+              img-src 'self' data: https://api.github.com https://avatars.githubusercontent.com https://workshop.cloud.gov https://gitlab.com https://secure.gravatar.com;
+              connect-src 'self' https://api.github.com https://workshop.cloud.gov https://gitlab.com;
+              worker-src 'self' blob:;
+              frame-ancestors 'self';
+              base-uri 'self';
+              form-action 'self'
+    on_failure:
+      put: slack
+      params:
+        text: |
+          :x: FAILED to deploy Stratos v5 (develop branch) on production
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        channel: ((production-slack-channel))
+        username: ((slack-username))
+        icon_url: ((slack-icon-url))
+
   - name: deploy-dev-v5
     serial: true
     plan:
@@ -455,6 +622,24 @@ resources:
     source:
       bucket: cg-build-artifacts
       versioned_file: deploy-stratos/stratos-cf-v5.zip
+      region_name: us-gov-west-1
+      server_side_encryption: AES256
+
+  # ── Stratos 5.x "develop" branch source + artifact ───────────────────────────
+  # Comparison track for production only — see deploy-production-v5-develop.
+  - name: stratos-v5-develop-source
+    type: git
+    icon: github-circle
+    source:
+      uri: https://github.com/cloudfoundry/stratos
+      branch: develop
+
+  - name: compiled-v5-develop
+    type: s3-iam
+    icon: database
+    source:
+      bucket: cg-build-artifacts
+      versioned_file: deploy-stratos/stratos-cf-v5-develop.zip
       region_name: us-gov-west-1
       server_side_encryption: AES256
 
