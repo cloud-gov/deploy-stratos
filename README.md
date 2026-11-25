@@ -21,6 +21,34 @@ The build pulls from `cloudfoundry/stratos` (upstream), applies cloud.gov
 theming from the [`theming/`](theming/) folder, and packages the result as a
 CF-pushable zip using `make build release cf`. 
 
+### `dashboard-develop` comparison track (production only)
+
+A second, independent track builds from the upstream `develop` branch instead
+of a tagged release and deploys straight to production as a separate app
+(`stratos-develop`), reachable at the `dashboard-develop` route:
+
+```
+compile-stratos-v5-develop
+  └── deploy-production-v5-develop
+```
+
+This lets the released dashboard (`dashboard-production` route, built from
+the latest `v5.*` tag) and the in-progress `develop` branch
+(`dashboard-develop` route) be compared side by side in production. It:
+
+- Rebuilds automatically on every commit to `cloudfoundry/stratos` `develop`
+  (`stratos-v5-develop-source`, `trigger: true`).
+- Uses its own RDS service instance (`stratos-db-v5-develop-encrypted`) and
+  its own UAA client (`stratos-develop`) — it does not share state with the
+  primary `stratos` app.
+- Is **not** gated behind `deploy-dev-v5`/`deploy-staging-v5` — it has no
+  `passed:` dependency on the release-tag chain, since it tracks a different
+  upstream branch entirely.
+- Requires these additional Credhub values: `production-dashboard-develop-route`,
+  `production-dashboard-develop-cf-client-secret`,
+  `production-dashboard-develop-session-store-secret`,
+  `production-dashboard-develop-db-encryption-key`.
+
 ---
 
 ## Theming
